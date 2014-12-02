@@ -1,4 +1,4 @@
-# Logistic regression
+ Logistic regression
 import numpy
 from theano import function, shared
 import theano.tensor as T

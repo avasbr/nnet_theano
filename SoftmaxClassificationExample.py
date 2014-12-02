@@ -36,8 +36,8 @@ X = T.dmatrix("X")
 Y = T.dmatrix("Y")
 
 # initialize the 
-W = shared(np.random.randn(d,k),name="W") # weight matrix
-b = shared(np.zeros((k,1),dtype='float64'),name="b",broadcastable=(False,True)) # bias vector
+W = shared(0.005*np.random.randn(d,k),name="W") # weight matrix
+b = shared(0.005*np.random.randn(k,1),name="b",broadcastable=(False,True)) # bias vector
 
 # construct Theano expression graph - this essentially defines the cost function 
 # and gradient
@@ -56,11 +56,11 @@ cost = T.mean(T.sum(-1.0*Y*T.log(prob),axis=0)) + 0.5*decay*(W**2).sum()
 gW,gb = T.grad(cost,[W,b]) # reverse-mode
 
 # compile functions
-# the train function takes in an instance of X,y,and updates the weight and bias parameters - could
+# the train function takes in an instance of X,Y,and updates the weight and bias parameters - could
 # probably add in validation sets for this too
 print "Compiling.."
 train = function([X,Y],updates=[(W,W-learn_rate*gW),(b,b-learn_rate*gb)])
-predict = function(inputs=[X],outputs=T.argmax(prob))
+predict = function(inputs=[X],outputs=T.argmax(prob,axis=0))
 
 print "Training..."
 for i in range(n_iter):
@@ -68,5 +68,7 @@ for i in range(n_iter):
 
 print "Evaluating..."
 pred = predict(X_te)
+print pred
+print 
 acc = 100.*np.mean(pred==y_lbl)
 print acc
