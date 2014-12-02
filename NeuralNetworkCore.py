@@ -38,6 +38,7 @@ class Network(object):
 
 	def fprop(self,X,y,wts=None,bs=None):
 		''' Performs forward propagation through the network, and updates all intermediate values'''
+		
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
@@ -48,17 +49,13 @@ class Network(object):
 				self.act[i+1] = activ(T.dot(w,self.act[i]) + b)
 
 	def compute_cost_grad(self,X,y,wts=None,bs=None):
-		''' Given inputs (X,y), a cost function, and hyperparameters necessary to compute it, 
-		returns the cost at the current state of the model (wts,bs), as well as the gradient of
-		
-		Parameters:
-		-----------
-		
-		Returns:
-		--------
-		'''
+		''' Given inputs (X,y), returns the cost at the current state of the model (wts,bs), as well as the gradient of '''
+
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
 		self.fprop(X,y,wts,bs) # forward propagation
-		E = self.cost_func(wts,bs,**self.hyperparam) # cost function
+		E = self.cost_func(X,y,wts,bs,**self.hyperparam) # cost function
 		grads = T.grad(E, [p for sublist in [wts,bs] for p in sublist]) # auto-diff (implements backprop)
 		dW = grads[:len(wts)] # collect gradients for weight matrices...
 		db = grads[len(wts):]# ...and biases
