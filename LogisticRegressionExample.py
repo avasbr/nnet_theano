@@ -1,5 +1,6 @@
- Logistic regression
+# Logistic regression
 import numpy
+import nnetutils as nu
 from theano import function, shared
 import theano.tensor as T
 rng = numpy.random
