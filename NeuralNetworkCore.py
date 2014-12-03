@@ -32,9 +32,9 @@ class Network(object):
 			self.bs_ = (len(self.n_nodes)-1)*[None]
 			
 			for i,(n1,n2) in enumerate(zip(self.n_nodes[:-1],self.n_nodes[1:])):
-				v = 4*np.sqrt(6./(n1+n2))
-				self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n2,n1)-v)) # convert to the floatX format
-				self.bs_[i] = theano.shared(nu.floatX(np.zeros((n2,1))))
+				v = 1.*np.sqrt(6./(n1+n2+1))
+				self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n1,n2)-v)) 
+				self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
 		else:
 			assert isinstance(wts,list)
 			assert isinstance(bs,list)
@@ -42,14 +42,7 @@ class Network(object):
 			self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
 	def fit(self,X,y,wts=None,bs=None,**optim_params):
-		''' Short description
-		
-		Parameters:
-		-----------
-		
-		Returns:
-		--------
-		'''
+		''' '''
 		def method_err():
 			err_msg = ('No method provided to fit! Your choices are:'
 						'\n(1) SGD: stochastic gradient descent'+
@@ -69,7 +62,7 @@ class Network(object):
 		del optim_params['method']
 
 		if method == 'SGD':
-			wts,bs = nopt.gradient_descent(X,y,wts,bs,self.compute_cost,**optim_params)
+			tr_cost = nopt.gradient_descent(X,y,wts,bs,self.compute_cost,**optim_params)
 
 		elif method == 'SGDm':
 			pass
@@ -88,10 +81,10 @@ class Network(object):
 			wts = self.wts_
 			bs = self.bs_
 
-		self.act[0] = self.activ[0](T.dot(wts[0],X) + bs[0]) # use the first data matrix to compute the first activation
+		self.act[0] = self.activ[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
 		if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
-				self.act[i+1] = activ(T.dot(w,self.act[i]) + b)
+				self.act[i+1] = activ(T.dot(self.act[i],w) + b)
 
 
 	# This might seem redundant and it's mostly for convenience, but there's a reason why it makes sense to break these into

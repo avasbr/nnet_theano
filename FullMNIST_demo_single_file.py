@@ -17,61 +17,60 @@ test_lbl_path = '/home/bhargav/datasets/MNIST/t10k-labels.idx1-ubyte'
 train_img = idx2numpy.convert_from_file(train_img_path)
 m,row,col = train_img.shape
 d = row*col
-X = np.reshape(train_img,(m,d)).T/255.
+X = np.reshape(train_img,(m,d))/255.
 
 train_lbl = idx2numpy.convert_from_file(train_lbl_path)
 k = max(train_lbl)+1
-y = np.zeros((k,m))
+y = np.zeros((m,k))
 for i,idx in enumerate(train_lbl):
-	y[idx,i] = 1
+	y[i,idx] = 1
 
 split = 0.5 # proporition to split for training/validation
 pidx = np.random.permutation(m)
 
 m_tr = int(split*m)
-X_tr = nu.floatX(X[:,pidx[:m_tr]])
-y_tr = nu.floatX(y[:,pidx[:m_tr]])
+X_tr = nu.floatX(X[pidx[:m_tr],:])
+y_tr = nu.floatX(y[pidx[:m_tr],:])
 
-X_val = nu.floatX(X[:,pidx[m_tr:]])
-y_val = nu.floatX(y[:,pidx[m_tr:]])
+X_val = nu.floatX(X[pidx[m_tr:],:])
+y_val = nu.floatX(y[pidx[m_tr:],:])
 
 # set the data matrix for test
 test_img = idx2numpy.convert_from_file(test_img_path)
 m_te = test_img.shape[0]
-X_te = nu.floatX(np.reshape(test_img,(m_te,d)).T/255.) # test data matrix
+X_te = nu.floatX(np.reshape(test_img,(m_te,d))/255.) # test data matrix
 test_lbl = idx2numpy.convert_from_file(test_lbl_path)
-
+print test_lbl.shape
 # set the targets for the test-set
-y_te = np.zeros((k,m_te))
-for i,idx in enumerate(test_lbl):
-	y_te[idx,i] = 1
-y_te = nu.floatX(y_te)
+y_te = test_lbl
 
 # Declare Theano symbolic variables
 x = T.matrix("x")
-y = T.matrix("y")
-W = [shared(nu.floatX(rng.randn(k,d)),name="w")] # weight vector
-b = [shared(nu.floatX(np.zeros((k,1))),name="b")] # bias vector
+y_oh = T.matrix("y_oh") # one-hot vector matrix
+y_lbl = T.ivector("y_lbl") # true vector
+
+W = [shared(nu.floatX(rng.randn(d,k)),name="w")] # weight vector
+b = [shared(nu.floatX(np.zeros((k,))),name="b")] # bias vector
 
 # Construct Theano expression graph - this essentially defines the cost function 
 # and gradient
 print "Building Theano expression graph..."
-cost = T.mean(T.sum(-1.0*y*T.log(nu.softmax(T.dot(W[0],x)+b)),axis=0))
+cost = T.mean(T.sum(-1.0*y_oh*T.log(nu.softmax(T.dot(x,W[0])+b)),axis=1))
 gW,gb = T.grad(cost,[W[0],b[0]])
-pred = T.argmax(nu.softmax(T.dot(W[0],x)+b),axis=0)
-pred_func = T.sum(T.neq(pred,y))
+pred = T.argmax(nu.softmax(T.dot(x,W[0])+b),axis=1)
+mce = T.mean(T.neq(pred,y_lbl))
 
 learn_rate = 0.35
+
 # Compile - the main function is one iterative step in training.
 # The 'updates' parameter in this context is our optimization routine
 print "Compiling.."
-train = function(inputs=[x,y],outputs=cost,updates=((W[0],W[0]-learn_rate*gW),(b[0],b[0]-learn_rate*gb)))
-predict = function([x,y],pred_func)
+train = function(inputs=[x,y_oh],outputs=cost,updates=((W[0],W[0]-learn_rate*gW),(b[0],b[0]-learn_rate*gb)))
+predict = function([x,y_lbl],mce)
 
 # Train
-n_iter = 10
-for i in range(10):
+n_iter = 500
+for i in range(n_iter):
 	cost = train(X_tr,y_tr)
 
-print "Final model:"
-print W.get_value(), b.get_value()
+print 'MCE: ',predict(X_te,y_te)

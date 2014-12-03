@@ -34,7 +34,7 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		if 'L2_decay' in cost_params:
 			reg_cost = 0.5*cost_params['L2_decay']*sum([T.sum(w**2) for w in wts])
 
-		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=0)) + reg_cost
+		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1)) + reg_cost
 
 		return E
 
@@ -59,7 +59,7 @@ class MultilayerNet(NeuralNetworkCore.Network):
 
 		return E
 
-	def predict(self,X,y=None,wts=None,bs=None):
+	def get_predict_fns(self,wts=None,bs=None):
 		''' predicts the class of the input, and additionally the misclassification error if the
 		true labels are provided'''
 
@@ -67,10 +67,13 @@ class MultilayerNet(NeuralNetworkCore.Network):
 			wts = self.wts_
 			bs = self.bs_
 
-		self.fprop(X,wts,bs) # run the input
-		pred = T.argmax(self.act[-1],axis=0) # final activation is the output
+		X = T.matrix()
+		y = T.vector()
+		self.fprop(X,wts,bs)
+		pred = T.argmax(self.act[-1],axis=1)
 
-		if y is None:
-			return pred
-		mce = 1.0-T.mean(1.*(pred==T.argmax(y,axis=0)))
-		return pred,mce
+		# compile the functions - this is what the user can use to do prediction
+		pred_func = theano.function([X],pred)
+		mce_func = theano.function([X,y],1.0-T.mean(T.neq(pred,y)))
+
+		return pred_func,mce_func

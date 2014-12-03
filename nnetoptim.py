@@ -2,7 +2,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-def gradient_descent(X_tr,y_tr,wts,bs,compute_cost,n_iter=1000,lr=None):
+def gradient_descent(X_tr,y_tr,wts,bs,compute_cost,n_iter=1000,learn_rate=None):
 	''' Simple, fat-free, reduced-sugar, low-calorie vanilla gradient descent
 	
 	Parameters:
@@ -25,14 +25,12 @@ def gradient_descent(X_tr,y_tr,wts,bs,compute_cost,n_iter=1000,lr=None):
 	
 	updates = []
 	for w,b,gw,gb in zip(wts,bs,dW,db):
-		updates.append((w,w-lr*gw))
-		updates.append((b,b-lr*gb))
+		updates.append((w,w-learn_rate*gw))
+		updates.append((b,b-learn_rate*gb))
 
+	# compiles the training function which defines how the costs will be changed, etc
 	train = theano.function(inputs=[x,y],outputs=cost,updates=updates)
-	tr_cost = []
-
+	
 	# simple, fat-free, reduced sugar vanilla gradient descent
 	for i in range(n_iter):
-		tr_cost.append(train(X_tr,y_tr))
-
-	return wts,bs,tr_cost
+		train(X_tr,y_tr)
