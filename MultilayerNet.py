@@ -17,51 +17,12 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		else:
 			sys.exit("That cost function is not available")
 
-	def cross_entropy(self,y,wts=None,bs=None,**cost_params):
-		''' basic cross entropy cost function with optional regularization'''
-		
-		if wts is None and bs is None:
-			wts = self.wts_
-			bs = self.bs_
-		
-		reg_cost = 0
-
-		# usually there would be just one or the other.. not sure when you would use both,
-		# seems like they would compete
-		if 'L1_decay' in cost_params:
-			reg_cost = cost_params['L1_decay']*sum([T.sum(T.abs(w)) for w in wts])
-		
-		if 'L2_decay' in cost_params:
-			reg_cost = 0.5*cost_params['L2_decay']*sum([T.sum(w**2) for w in wts])
-
-		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1)) + reg_cost
-
-		return E
-
-	def squared_error(self,y,wts=None,bs=None,**cost_params):
-		''' basic squared error cost function with optional regularization'''
-
-		if wts is None and bs is None:
-			wts = self.wts_
-			bs = self.bs_
-		
-		reg_cost = 0		
-
-		# usually there would be just one or the other.. not sure when you would use both,
-		# seems like they would compete
-		if 'L1_decay' in cost_params:
-			reg_cost += cost_params['L1_decay']*sum([T.sum(T.abs(w)) for w in wts])
-
-		if 'L2_decay' in cost_params:
-			reg_cost += 0.5*cost_params['L2_decay']*sum([T.sum(w**2) for w in wts])
-
-		E = T.mean(T.sum((y-self.act[-1])**2)) + reg_cost
-
-		return E
-
 	def get_predict_fns(self,wts=None,bs=None):
-		''' predicts the class of the input, and additionally the misclassification error if the
-		true labels are provided'''
+		'''This might be slightly confusing, as this function returns two compiled functions which can 
+		be used for testing purposes. Since theano needs to first compile expressions to actually evaluate
+		them, it makes sense to return their compiled versions such that a user can then freely use them 
+		to perform classification. Otherwise, we would be recompiling the expressions with every call, which
+		is definitely non-ideal'''
 
 		if wts is None and bs is None:
 			wts = self.wts_
@@ -77,3 +38,5 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		mce_func = theano.function([X,y],1.0-T.mean(T.neq(pred,y)))
 
 		return pred_func,mce_func
+
+	

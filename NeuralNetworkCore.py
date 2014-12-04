@@ -62,7 +62,7 @@ class Network(object):
 		del optim_params['method']
 
 		if method == 'SGD':
-			tr_cost = nopt.gradient_descent(X,y,wts,bs,self.compute_cost,**optim_params)
+			tr_cost = nopt.gradient_descent(X,y,wts,bs,self.compute_cost_grad,**optim_params)
 
 		elif method == 'SGDm':
 			pass
@@ -86,7 +86,6 @@ class Network(object):
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
 				self.act[i+1] = activ(T.dot(self.act[i],w) + b)
 
-
 	# This might seem redundant and it's mostly for convenience, but there's a reason why it makes sense to break these into
 	# two separate functions. "compute_cost_grad" lumps the computation of the cost function and gradient function into one,
 	# and is particularly useful for optimization over a training set. We get the cost for free, since we need to compute the
@@ -106,17 +105,53 @@ class Network(object):
 		
 		return E
 
-	# def compute_cost_grad(self,X,y,wts=None,bs=None):
-	# 	''' Given inputs (X,y), returns the cost at the current state of the model (wts,bs), as well as the gradient of '''
+	def compute_cost_grad(self,X,y,wts=None,bs=None):
+		''' Given inputs (X,y), returns the cost at the current state of the model (wts,bs), as well as the gradient of '''
 
-	# 	if wts is None and bs is None:
-	# 		wts = self.wts_
-	# 		bs = self.bs_
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
 
-	# 	E = self.compute_cost(X,y,wts,bs)
-	# 	grads = T.grad(E, [p for sublist in [wts,bs] for p in sublist]) # auto-diff (implements backprop)
-	# 	dW = grads[:len(wts)] # collect gradients for weight matrices...
-	# 	db = grads[len(wts):]# ...and biases
+		E = self.compute_cost(X,y,wts,bs)
+		grads = T.grad(E, [p for sublist in [wts,bs] for p in sublist]) # auto-diff (implements backprop)
+		dW = grads[:len(wts)] # collect gradients for weight matrices...
+		db = grads[len(wts):]# ...and biases
 
-	# 	return E,dW,db # return the cost and gradients
+		return E,dW,db # return the cost and gradients
 
+	# A few basic cost functions that are used often. The autoencoder could build upon this and add
+	# a sparsity constraint with a few more cost parameters. 
+
+	def regularization_cost(self,wts=None,**cost_params):
+
+		reg_cost = 0
+
+		if 'L1_decay' in cost_params:
+			reg_cost += cost_params['L1_decay']*sum([T.sum(T.abs(w)) for w in wts])
+		
+		if 'L2_decay' in cost_params:
+			reg_cost += 0.5*cost_params['L2_decay']*sum([T.sum(w**2) for w in wts])
+
+		return reg_cost
+
+	def cross_entropy(self,y,wts=None,bs=None,**cost_params):
+		''' basic cross entropy cost function with optional regularization'''
+		
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
+		
+		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1)) + self.regularization_cost(wts,**cost_params)
+
+		return E
+
+	def squared_error(self,y,wts=None,bs=None,**cost_params):
+		''' basic squared error cost function with optional regularization'''
+
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
+		
+		E = T.mean(T.sum((y-self.act[-1])**2)) + self.regularization_cost(wts,**cost_params)
+
+		return E

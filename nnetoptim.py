@@ -2,7 +2,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-def gradient_descent(X_tr,y_tr,wts,bs,compute_cost,n_iter=1000,learn_rate=None):
+def gradient_descent(X_tr,y_tr,wts,bs,compute_cost_grad,n_iter=1000,learn_rate=None):
 	''' Simple, fat-free, reduced-sugar, low-calorie vanilla gradient descent
 	
 	Parameters:
@@ -16,12 +16,7 @@ def gradient_descent(X_tr,y_tr,wts,bs,compute_cost,n_iter=1000,learn_rate=None):
 	x = T.matrix('x') # typed, input variable
 	y = T.matrix('y') # type, output variable
 	
-	cost = compute_cost(x,y,wts,bs) # the cost and gradients
-	
-	# autodiff to compute gradient (essentially implements bprop)
-	grads = T.grad(cost, [p for sublist in [wts,bs] for p in sublist])
-	dW = grads[:len(wts)] # collect gradients for weight matrices...
-	db = grads[len(wts):]# ...and biases
+	cost,dW,db = compute_cost_grad(x,y,wts,bs) # the cost and gradients
 	
 	updates = []
 	for w,b,gw,gb in zip(wts,bs,dW,db):
