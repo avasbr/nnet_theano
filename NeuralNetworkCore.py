@@ -16,14 +16,14 @@ class Network(object):
 		self.n_nodes = [d]+n_hid+[k] # number of nodes
 		self.act = (len(self.n_nodes)-1)*[None]
 		self.activ = activ
-		
+				
 		if all(node for node in self.n_nodes):
-			self.set_weights()
+			self.set_weights(method='random')
 		
 		self.cost_func = cost_func
 		self.cost_params = cost_params
 
-	def set_weights(self,wts=None,bs=None):
+	def set_weights(self,wts=None,bs=None,method='random'):
 		''' Initializes the weights and biases of the neural network '''
 
 		# weights and biases
@@ -31,23 +31,28 @@ class Network(object):
 			self.wts_ = (len(self.n_nodes)-1)*[None]
 			self.bs_ = (len(self.n_nodes)-1)*[None]
 			
-			for i,(n1,n2) in enumerate(zip(self.n_nodes[:-1],self.n_nodes[1:])):
-				v = 1.*np.sqrt(6./(n1+n2+1))
-				self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n1,n2)-v)) 
-				self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
+			if method == 'random':
+				for i,(n1,n2) in enumerate(zip(self.n_nodes[:-1],self.n_nodes[1:])):
+					v = 4.*np.sqrt(6./(n1+n2+1))
+					self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n1,n2)-v)) 
+					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
+			# fixed weights, mainly for debugging purposes
+			else:
+				for i,(n1,n2) in enumerate(zip(self.n_nodes[:-1],self.n_nodes[1:])):
+					self.wts_[i] = theano.shared(nu.floatX(np.reshape(0.1*np.range(n1*n2),n1,n2)))
+					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
 		else:
 			assert isinstance(wts,list)
 			assert isinstance(bs,list)
 			self.wts_ = [theano.shared(nu.floatX(w)) for w in wts]
 			self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
-	def fit(self,X,y,wts=None,bs=None,**optim_params):
+	def fit(self,X,y,wts=None,bs=None,X_val=None,y_val=None,**optim_params):
 		''' '''
+
 		def method_err():
 			err_msg = ('No method provided to fit! Your choices are:'
 						'\n(1) SGD: stochastic gradient descent'+
-						'\n(2) SGDm: stochastic gradient descent with momentum'
-						'\n(3) SGDim: an improved version of SGDm'
 						'\n(4) RMSPROP: hintons mini-batch mini-batch version of rprop [UNDER CONSTRUCTION]')
 			return err_msg
 
@@ -62,20 +67,18 @@ class Network(object):
 		del optim_params['method']
 
 		if method == 'SGD':
-			tr_cost = nopt.gradient_descent(X,y,wts,bs,self.compute_cost_grad,**optim_params)
-
-		elif method == 'SGDm':
-			pass
-			
-		elif method == 'SGDim':
-			pass
+			nopt.minibatch_gradient_descent(X,y,wts,bs,self.compute_cost,self.compute_grad,**optim_params)
+			# nopt.minibatch_gradient_descent(X,y,wts,bs,self.compute_cost_grad,self.compute_cost,
+			# 	X_val=X_val,y_val=y_val,**optim_params)
 		else:
 			print method_err()
 
 		return self
 
 	def fprop(self,X,wts=None,bs=None):
-		''' Performs forward propagation through the network, and updates all intermediate values'''
+		''' Performs forward propagation through the network, and updates all intermediate values. if
+		input_dropout and hidden_dropout are specified, uses those to randomly omit hidden units - very 
+		powerful technique'''
 		
 		if wts is None and bs is None:
 			wts = self.wts_
@@ -86,12 +89,9 @@ class Network(object):
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
 				self.act[i+1] = activ(T.dot(self.act[i],w) + b)
 
-	# This might seem redundant and it's mostly for convenience, but there's a reason why it makes sense to break these into
-	# two separate functions. "compute_cost_grad" lumps the computation of the cost function and gradient function into one,
-	# and is particularly useful for optimization over a training set. We get the cost for free, since we need to compute the
-	# cost en route to computing the gradient anyway. "compute_cost", as the name suggests, only computes the cost, and this is
-	# useful for tracking performance on validation and test sets. In general, both of these functions would be used in a 
-	# gradient-based optimizer (e.g. sgd, adagrad, rmsprop, etc) 
+	# compute_cost and compute_grad functions - the former applies forward propagation, and computes the cost
+	# based on the labels. The latter applies autodiff on this cost function and computes the gradients with 
+	# respect to the weights and biases
 
 	def compute_cost(self,X,y,wts=None,bs=None):
 		''' Given inputs (X,y), returns the cost at the current state of the model (wts,bs) '''
@@ -101,29 +101,30 @@ class Network(object):
 			bs = self.bs_
 
 		self.fprop(X,wts,bs)
-		E = self.cost_func(y,wts,bs,**self.cost_params)
+		cost = self.cost_func(y,wts,bs,**self.cost_params)
 		
-		return E
+		return cost
 
-	def compute_cost_grad(self,X,y,wts=None,bs=None):
-		''' Given inputs (X,y), returns the cost at the current state of the model (wts,bs), as well as the gradient of '''
+	def compute_grad(self,cost,wts=None,bs=None):
+		''' Given the cost, computes its derivative with respect to the weights and biases of the
+		neural network '''
 
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 
-		E = self.compute_cost(X,y,wts,bs)
-		grads = T.grad(E, [p for sublist in [wts,bs] for p in sublist]) # auto-diff (implements backprop)
-		dW = grads[:len(wts)] # collect gradients for weight matrices...
-		db = grads[len(wts):]# ...and biases
+		grads = T.grad(cost,[p for param in [wts,bs] for p in param])
+		dW = grads[:len(wts)]
+		db = grads[len(wts):]
 
-		return E,dW,db # return the cost and gradients
+		return dW,db
 
-	# A few basic cost functions that are used often. The autoencoder could build upon this and add
-	# a sparsity constraint with a few more cost parameters. 
-
+	# A few basic cost functions that are used often. The autoencoder builds upon this and adds
+	# a sparsity constraint with a few more cost parameters. In general though, one can still 
+	# define custom cost functions and feed those into this base class 
+	
 	def regularization_cost(self,wts=None,**cost_params):
-
+		''' L1 or L2 regularization '''
 		reg_cost = 0
 
 		if 'L1_decay' in cost_params:
@@ -140,7 +141,6 @@ class Network(object):
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
-		
 		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1)) + self.regularization_cost(wts,**cost_params)
 
 		return E

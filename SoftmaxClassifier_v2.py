@@ -258,6 +258,7 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
 
     # the cost we minimize during training is the negative log likelihood of
     # the model in symbolic format
+
     cost = classifier.negative_log_likelihood(y)
 
     # compiling a Theano function that computes the mistakes that are made by
@@ -309,14 +310,14 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     ###############
     print '... training the model'
     # early-stopping parameters
-    patience = 5000  # look as this many examples regardless
+    patience = 5000  # look at this many batches regardless
     patience_increase = 2  # wait this much longer when a new best is
                                   # found
     improvement_threshold = 0.995  # a relative improvement of this much is
                                   # considered significant
     validation_frequency = min(n_train_batches, patience / 2)
                                   # go through this many
-                                  # minibatche before checking the network
+                                  # minibatches before checking the network
                                   # on the validation set; in this case we
                                   # check every epoch
 
@@ -339,7 +340,7 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
                 # compute zero-one loss on validation set
                 validation_losses = [validate_model(i)
                                      for i in xrange(n_valid_batches)]
-                this_validation_loss = numpy.mean(validation_losses)
+                this_validation_loss = numpy.mean(validation_losses) # average validation loss..
 
                 print(
                     'epoch %i, minibatch %i/%i, validation error %f %%' %
