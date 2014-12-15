@@ -54,12 +54,15 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		else:
 			super(MultilayerNet,self).fprop(X,wts,bs)
 
-	def get_predict_fns(self,wts=None,bs=None):
-		'''This might be slightly confusing, as this function returns two compiled functions which can 
-		be used for testing purposes. Since theano needs to first compile expressions to actually evaluate
-		them, it makes sense to return their compiled versions such that a user can then freely use them 
-		to perform classification. Otherwise, we would be recompiling the expressions with every call, which
-		is definitely non-ideal'''
+	def fit(self,X,y,wts=None,bs=None,X_val=None,y_val=None,**optim_params):
+		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
+		prediction and scoring functions '''
+		
+		super(MultilayerNet,self).fit(X,y,wts,bs)
+		self.compile_predict_score(wts,bs)
+
+	def compile_predict_score(self,wts=None,bs=None):
+		''' compiles prediction and scoring functions for testing '''
 
 		if wts is None and bs is None:
 			wts = self.wts_
@@ -78,7 +81,5 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		pred = T.argmax(self.act[-1],axis=1)
 
 		# compile the functions - this is what the user can use to do prediction
-		pred_func = theano.function([X],pred)
-		acc_func = theano.function([X,y],1.0-T.mean(T.neq(pred,T.argmax(y,axis=1))))
-
-		return pred_func,acc_func	
+		self.predict = theano.function([X],pred)
+		self.score = theano.function([X,y],1.0-T.mean(T.neq(pred,T.argmax(y,axis=1))))	

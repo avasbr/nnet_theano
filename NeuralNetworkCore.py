@@ -44,6 +44,7 @@ class Network(object):
 		else:
 			assert isinstance(wts,list)
 			assert isinstance(bs,list)
+			
 			self.wts_ = [theano.shared(nu.floatX(w)) for w in wts]
 			self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
@@ -52,8 +53,8 @@ class Network(object):
 
 		def method_err():
 			err_msg = ('No method provided to fit! Your choices are:'
-						'\n(1) SGD: stochastic gradient descent'+
-						'\n(4) RMSPROP: hintons mini-batch mini-batch version of rprop [UNDER CONSTRUCTION]')
+						'\n(1) adaGrad: stochastic gradient descent'+
+						'\n(2) RMSPROP: hintons mini-batch mini-batch version of rprop [UNDER CONSTRUCTION]')
 			return err_msg
 
 		if wts is None and bs is None:
