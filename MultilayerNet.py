@@ -58,7 +58,7 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
 		prediction and scoring functions '''
 		
-		super(MultilayerNet,self).fit(X,y,wts,bs)
+		super(MultilayerNet,self).fit(X,y,wts,bs,**optim_params)
 		self.compile_predict_score(wts,bs)
 
 	def compile_predict_score(self,wts=None,bs=None):

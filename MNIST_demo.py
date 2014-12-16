@@ -7,10 +7,14 @@ import MultilayerNet as mln
 
 print 'Loading data...'
 
-train_img_path = '/home/avasbr/datasets/MNIST/train-images.idx3-ubyte'
-train_lbl_path = '/home/avasbr/datasets/MNIST/train-labels.idx1-ubyte' 
-test_img_path = '/home/avasbr/datasets/MNIST/t10k-images.idx3-ubyte'
-test_lbl_path = '/home/avasbr/datasets/MNIST/t10k-labels.idx1-ubyte'
+train_img_path = '/home/bhargav/datasets/MNIST/train-images.idx3-ubyte'
+train_lbl_path = '/home/bhargav/datasets/MNIST/train-labels.idx1-ubyte' 
+test_img_path = '/home/bhargav/datasets/MNIST/t10k-images.idx3-ubyte'
+test_lbl_path = '/home/bhargav/datasets/MNIST/t10k-labels.idx1-ubyte'
+
+#######################
+# SET UP TRAINING DATA
+#######################
 
 # define training and validation data
 train_img = idx2numpy.convert_from_file(train_img_path)
@@ -53,7 +57,7 @@ if validation_flag:
 		# define a new network to retrain
 		mln_params = {'d':d,'k':k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],'cost_type':'cross_entropy',
 		'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
-		optim_params = {'method':'SGD','n_epochs':2000,'batch_size':100,'learn_rate':learn_rate}
+		optim_params = {'method':'SGD','n_epochs':200,'batch_size':100,'learn_rate':learn_rate}
 		nnet = mln.MultilayerNet(**mln_params)
 		nnet.fit(X_val,y_val,**optim_params)
 		pred,acc = nnet.get_predict_fns()
@@ -65,27 +69,16 @@ if validation_flag:
 	print 'Best accuracy:',best_accuracy
 	print 'Best learning rate:',best_learn_rate
 
+##################
+# PERFORM TRAINING 
+##################
+
 # Train a model with the same learning rate on the training set, test on the testing set:
 print 'Training...'
 mln_params = {'d':d,'k':k,'n_hid':[800,800],'activ':[nu.sigmoid,nu.sigmoid,nu.softmax],'cost_type':'cross_entropy',
-'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
-optim_params = {'method':'SGD','n_epochs':2000,'batch_size':100,'learn_rate':10}
+'dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
+optim_params = {'method':'SGD','n_epochs':60,'batch_size':100,'learn_rate':10}
 nnet = mln.MultilayerNet(**mln_params)
 nnet.fit(X,y,**optim_params)
-pred,acc = nnet.get_predict_fns()
-print 100*acc(X_te,y_te),'%'
-
-
-# print 'Training...'
-
-# mln_params = {'d':d,'k':k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],'cost_type':'cross_entropy','dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
-# # optim_params = {'method':'SGD','n_iter':1000,'learn_rate':0.1}
-# # optim_params = {'method':'SGD','n_epochs':1000,'batch_size':500,'learn_rate':0.13,'early_stopping':True,'patience':7000}
-# optim_params = {'method':'SGD','n_epochs':100,'batch_size':1000,'learn_rate':0.13}
-# nnet = mln.MultilayerNet(**mln_params)
-# nnet.fit(X,y_oh,**optim_params)
-
-# pred,acc = nnet.get_predict_fns()
-
-# print 'Performance on test set:'
-# print 'Accuracy:',100.*acc(X_te,y_te),'%'
+print 'Performance:'
+print 100*nnet.score(X_te,y_te),'%'

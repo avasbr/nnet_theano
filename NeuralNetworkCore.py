@@ -36,6 +36,7 @@ class Network(object):
 					v = 4.*np.sqrt(6./(n1+n2+1))
 					self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n1,n2)-v)) 
 					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
+			
 			# fixed weights, mainly for debugging purposes
 			else:
 				for i,(n1,n2) in enumerate(zip(self.n_nodes[:-1],self.n_nodes[1:])):
@@ -53,7 +54,7 @@ class Network(object):
 
 		def method_err():
 			err_msg = ('No method provided to fit! Your choices are:'
-						'\n(1) adaGrad: stochastic gradient descent'+
+						'\n(1) SGD: stochastic gradient descent [CHANGE TO ADAGRAD SOON]'+
 						'\n(2) RMSPROP: hintons mini-batch mini-batch version of rprop [UNDER CONSTRUCTION]')
 			return err_msg
 
@@ -124,35 +125,35 @@ class Network(object):
 	# a sparsity constraint with a few more cost parameters. In general though, one can still 
 	# define custom cost functions and feed those into this base class 
 	
-	def regularization_cost(self,wts=None,**cost_params):
+	def regularization_cost(self,wts=None):
 		''' L1 or L2 regularization '''
 		reg_cost = 0
 
-		if 'L1_decay' in cost_params:
-			reg_cost += cost_params['L1_decay']*sum([T.sum(T.abs(w)) for w in wts])
+		if 'L1_decay' in self.cost_params:
+			reg_cost += self.cost_params['L1_decay']*sum([T.sum(T.abs(w)) for w in wts])
 		
-		if 'L2_decay' in cost_params:
-			reg_cost += 0.5*cost_params['L2_decay']*sum([T.sum(w**2) for w in wts])
+		if 'L2_decay' in self.cost_params:
+			reg_cost += 0.5*self.cost_params['L2_decay']*sum([T.sum(w**2) for w in wts])
 
 		return reg_cost
 
-	def cross_entropy(self,y,wts=None,bs=None,**cost_params):
+	def cross_entropy(self,y,wts=None,bs=None):
 		''' basic cross entropy cost function with optional regularization'''
 		
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
-		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1)) + self.regularization_cost(wts,**cost_params)
+		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1)) + self.regularization_cost(wts)
 
 		return E
 
-	def squared_error(self,y,wts=None,bs=None,**cost_params):
+	def squared_error(self,y,wts=None,bs=None):
 		''' basic squared error cost function with optional regularization'''
 
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 		
-		E = T.mean(T.sum((y-self.act[-1])**2)) + self.regularization_cost(wts,**cost_params)
+		E = T.mean(T.sum((y-self.act[-1])**2)) + self.regularization_cost(wts)
 
 		return E

@@ -8,7 +8,7 @@ def maxnorm_regularization(w,c):
 	l2n = T.sum(w**2,axis=0)
 	w /= ((l2n > c**2)*T.sqrt(l2n) + (l2n < c**2)*1.)
 
-def gradient_descent(X_tr,y_tr,wts,bs,compute_cost_grad,n_iter=1000,learn_rate=None):
+def vanilla_gradient_descent(X_tr,y_tr,wts,bs,compute_cost_grad,n_iter=1000,learn_rate=None):
 	''' Simple, fat-free, reduced-sugar, low-calorie vanilla gradient descent
 	
 	Parameters:
@@ -39,8 +39,8 @@ def gradient_descent(X_tr,y_tr,wts,bs,compute_cost_grad,n_iter=1000,learn_rate=N
 def rmsprop(X_tr,y_tr,batch_size,n_epochs=1000):
 	pass
 
-def minibatch_gradient_descent(X_tr,y_tr,wts,bs,compute_cost,compute_grad,batch_size=None,n_epochs=None,learn_rate=None,
-	max_norm=False,c=None):
+def minibatch_gradient_descent(X_tr,y_tr,wts,bs,compute_cost,compute_grad,batch_size=None,
+	n_epochs=None,learn_rate=None,max_norm=False,c=None):
 	''' Assuming all the data can fit in memory, runs mini-batch gradient descent with optional max-norm
 	regularization. This tends to work well with dropout + rectified linear activation functions '''
 	
@@ -70,7 +70,6 @@ def minibatch_gradient_descent(X_tr,y_tr,wts,bs,compute_cost,compute_grad,batch_
 	train = theano.function(inputs=[x,y],updates=updates) # training function
 	evaluate = theano.function(inputs=[x,y],outputs=cost) # useful also for validation purposes
 	while epoch < n_epochs:
-		print 'epoch',epoch
 		epoch += 1
 		tr_idx = np.random.permutation(m) # randomly shuffle the data indices
 		ss_idx = range(0,m,batch_size)
@@ -85,9 +84,9 @@ def minibatch_gradient_descent(X_tr,y_tr,wts,bs,compute_cost,compute_grad,batch_
 			# uncomment the next two lines for speed - this is purely for reporting purposes, should be in a log
 			# tr_cost = evaluate(X_tr,y_tr)
 			# print 'iter/epoch: %i/%i, training loss: %.3f'%(idx,epoch,tr_cost)
-		if epoch%100 == 0:
+		if epoch%10 == 0:
 			tr_cost = evaluate(X_tr,y_tr)
-			print 'Epoch: %s, Training error:%.3f'%(epoch,tr_cost)
+			print 'Epoch: %s, Training error: %.3f'%(epoch,tr_cost)
 
 # Save for later
 #--------
