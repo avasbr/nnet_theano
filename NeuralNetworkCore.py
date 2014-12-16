@@ -130,7 +130,7 @@ class Network(object):
 		reg_cost = 0
 
 		if 'L1_decay' in self.cost_params:
-			reg_cost += self.cost_params['L1_decay']*sum([T.sum(T.abs(w)) for w in wts])
+			reg_cost += self.cost_params['L1_decay']*sum([T.sum(T.abs_(w)) for w in wts])
 		
 		if 'L2_decay' in self.cost_params:
 			reg_cost += 0.5*self.cost_params['L2_decay']*sum([T.sum(w**2) for w in wts])

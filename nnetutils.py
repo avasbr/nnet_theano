@@ -34,15 +34,19 @@ def split_train_val(X,y,p):
 
 	return X_tr,y_tr,X_val,y_val
 
-def theano_unroll(wts,bs):
-	'''Flattens matrices and concatenates to a vector '''
+# Ideally there should just be a single set of functions for this, instead of splitting them up like this - but for
+# the time being, this works, and since this is primarily for gradient checking (not a super-critical piece of this
+# project, given that it's theano's autodiff, which has presumably been tested to death), i'm not going to focus a lot
+# of time to clean this up at the moment
+def t_unroll(wts,bs):
+	'''Flattens matrices and concatenates to a vector - need for constructing theano expression graphs'''
 	v = floatX(np.array([]))
 	for w,b in zip(wts,bs):
 		v = T.concatenate((v,T.flatten(w),T.flatten(b)))
 	return v
 
-def theano_reroll(v,n_nodes):
-	'''Re-rolls a vector v into the weight matrices'''
+def t_reroll(v,n_nodes):
+	'''Re-rolls a vector v into the weight matrices - need for constructing theano expression graphs'''
 
 	idx = 0
 	r_wts = []

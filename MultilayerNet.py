@@ -2,6 +2,7 @@ import numpy as np
 import NeuralNetworkCore
 import theano
 import theano.tensor as T
+import sys
 from theano.tensor.shared_randomstreams import RandomStreams
 
 class MultilayerNet(NeuralNetworkCore.Network):
@@ -24,6 +25,10 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		
 		else:
 			sys.exit("That cost function is not available")
+
+		# functions which will be compiled after 'fit' has been run
+		self.predict = None
+		self.score = None 
 
 	def dropout(self,act,p=0.):
 		''' Randomly drops an activation with probability p '''
