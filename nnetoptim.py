@@ -67,8 +67,8 @@ def minibatch_gradient_descent(X_tr,y_tr,wts,bs,compute_cost,compute_grad,batch_
 		updates.append((b,b_))
 	
 	# compiles the training and validation functions
-	train = theano.function(inputs=[x,y],updates=updates) # training function
-	evaluate = theano.function(inputs=[x,y],outputs=cost) # useful also for validation purposes
+	train = theano.function(inputs=[x,y],updates=updates,mode='FAST_RUN',allow_input_downcast=True) # training function
+	evaluate = theano.function(inputs=[x,y],outputs=cost,mode='FAST_RUN',allow_input_downcast=True) # useful also for validation purposes
 	while epoch < n_epochs:
 		epoch += 1
 		tr_idx = np.random.permutation(m) # randomly shuffle the data indices

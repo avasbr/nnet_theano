@@ -86,5 +86,5 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		pred = T.argmax(self.act[-1],axis=1)
 
 		# compile the functions - this is what the user can use to do prediction
-		self.predict = theano.function([X],pred)
-		self.score = theano.function([X,y],1.0-T.mean(T.neq(pred,T.argmax(y,axis=1))))	
+		self.predict = theano.function([X],pred,mode='FAST_RUN',allow_input_downcast=True)
+		self.score = theano.function([X,y],1.0-T.mean(T.neq(pred,T.argmax(y,axis=1))),mode='FAST_RUN',allow_input_downcast=True)	

@@ -7,10 +7,10 @@ import MultilayerNet as mln
 
 print 'Loading data...'
 
-train_img_path = '/home/bhargav/datasets/MNIST/train-images.idx3-ubyte'
-train_lbl_path = '/home/bhargav/datasets/MNIST/train-labels.idx1-ubyte' 
-test_img_path = '/home/bhargav/datasets/MNIST/t10k-images.idx3-ubyte'
-test_lbl_path = '/home/bhargav/datasets/MNIST/t10k-labels.idx1-ubyte'
+train_img_path = '/home/avasbr/datasets/MNIST/train-images.idx3-ubyte'
+train_lbl_path = '/home/avasbr/datasets/MNIST/train-labels.idx1-ubyte' 
+test_img_path = '/home/avasbr/datasets/MNIST/t10k-images.idx3-ubyte'
+test_lbl_path = '/home/avasbr/datasets/MNIST/t10k-labels.idx1-ubyte'
 
 #######################
 # SET UP TRAINING DATA
