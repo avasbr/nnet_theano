@@ -18,10 +18,10 @@ class testNeuralNetworkCore(unittest.TestCase):
 		self.k = 3
 		self.m = 100
 
-		self.X = np.random.rand(self.d,self.m) # generate some synthetic data (5-dim feature vectors)
-		self.y = np.zeros((self.k,self.m))
+		self.X = np.random.rand(self.m,self.d) # generate some synthetic data (5-dim feature vectors)
+		self.y = np.zeros((self.m,self.k))
 		for i,v in enumerate(np.random.randint(0,self.k,self.m)):
-			self.y[v,i] = 1 # create one-hot vectors
+			self.y[i,v] = 1 # create one-hot vectors
 		
 		# define some gradient checking parameters
 		self.err_tol = 1e-9
@@ -29,14 +29,6 @@ class testNeuralNetworkCore(unittest.TestCase):
 
 	def check_gradients(self,nnet):
 		
-		# get the weights from the neural network - we'll freeze these values as the baseline for
-		# computing numerical gradients
-
-		# decide which weights to test
-		# dim = 1.
-		# for n1,n2 in zip(nnet.n_nodes[:-1],nnet.n_nodes[1:]):
-		# 	dim += (n2+1)*n1
-
 		X = T.matrix() # inputs
 		Y = T.matrix() # labels
 		v_plus = T.vector() # full 'plus' weight vector
@@ -51,21 +43,21 @@ class testNeuralNetworkCore(unittest.TestCase):
 			
 			# compute the cost for both sides, and then compute the numerical gradient
 			cost_plus = nnet.compute_cost(X,Y,wts_plus,bs_plus)
-			cost_minus = nnet.compute_cost(X,Y,wts_plus,bs_minus)
+			cost_minus = nnet.compute_cost(X,Y,wts_minus,bs_minus)
 			
 			return 1.0*(cost_plus-cost_minus)/(2*self.eps) # ( E(weights[i]+eps) - E(weights[i]-eps) )/(2*eps)
 
 		compute_ngrad = theano.function(inputs=[v_plus,v_minus,X,Y],outputs=compute_numerical_gradient(v_plus,v_minus,X,Y))
 
 		# 2. compile backprop (theano's autodiff)
-		cost = nnet.compute_cost(X,y)
+		cost = nnet.compute_cost(X,Y)
 		dW,db = nnet.compute_grad(cost)
 		compute_bgrad = theano.function(inputs=[X,Y],outputs=nu.theano_unroll(dW,db))
 
 		# compute the mean difference
-		v0 = nu.unroll(nnet.wts_.get_value(),nnet.bs_.get_value())
+		v0 = nu.unroll([w.get_value() for w in nnet.wts_],[b.get_value() for b in nnet.bs_])
 		n = np.size(v0)
-		idxs = np.random.permutation(n)[:(n/5)] # choose a random 20% - we don't need to add this into the theano graph
+		idxs = np.random.permutation(n)[:(n/1)] # choose a random 20% - we don't need to add this into the theano graph
 
  		# compute gradients
  		ngrad = [None]*len(idxs)
@@ -77,11 +69,12 @@ class testNeuralNetworkCore(unittest.TestCase):
 			v_minus[idx] -= self.eps
 			
 			ngrad[j] = compute_ngrad(v_plus,v_minus,self.X,self.y)
+
 		bgrad = compute_bgrad(self.X,self.y)[idxs]
 
 		# compute difference between numerical and backpropagated derivatives
 		cerr = np.mean(np.abs(ngrad-bgrad))
-		self.assertLess(cerr,self.tol)
+		self.assertLess(cerr,self.err_tol)
 
 	# def test_Autoencoder(self):
 

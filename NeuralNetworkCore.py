@@ -103,7 +103,7 @@ class Network(object):
 			bs = self.bs_
 
 		self.fprop(X,wts,bs)
-		cost = self.cost_func(y,wts,bs,**self.cost_params)
+		cost = self.cost_func(y,wts,bs)
 		
 		return cost
 
