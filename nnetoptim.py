@@ -88,6 +88,56 @@ def minibatch_gradient_descent(X_tr,y_tr,wts,bs,compute_cost,compute_grad,batch_
 			tr_cost = evaluate(X_tr,y_tr)
 			print 'Epoch: %s, Training error: %.3f'%(epoch,tr_cost)
 
+def adagrad(X_tr,y_tr,n_nodes,wts,bs,compute_cost,compute_grad,batch_size=None,n_epochs=None,
+	master_learn_rate=None,max_norm=False,c=None):
+	''' adaptive gradient method - typically works better than vanilla SGD and has some 
+	nice theoretical guarantees '''
+
+	if master_learn_rate is None:
+		master_learn_rate = 1.
+
+	# compile the training function	
+	m = X_tr.shape[0] # total number of training instances
+	n_batches = int(m/batch_size) # number of batches, based on batch size
+	leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
+	epoch = 0
+	
+	x = T.matrix('x') # input variable
+	y = T.matrix('y') # output variable
+	
+	cost = compute_cost(x,y,wts,bs) # cost
+	dW,db = compute_grad(cost,wts,bs) # gradient 
+	
+	# initialize the historical gradient parameters
+	h_dW = [None]*(len(n_nodes)-1); h_db = [None]*(len(n_nodes)-1)
+	for i,(n1,n2) in enumerate(zip(n_nodes[:-1],n_nodes[1:])):
+		h_dW[i] = nu.floatX(np.zeros((n1,n2)))
+		h_db[i] = nu.floatX(np.zeros(n2))
+
+	updates = []
+	
+	for w,b,gw,gb,h_gw,h_gb in zip(wts,bs,dW,db,h_dW,h_db):
+		
+		# historical gradient
+		h_gw += gw**2
+		h_gb += db**2
+
+		# new learning rate (matrix)
+		a_gw = gw/(T.sqrt(h_gw) + eps)
+		a_gb = gb/(T.sqrt(h_gb) + eps)
+		
+		# update 
+		w_ = w - master_learn_rate*a_gw
+		b_ = b - master_learn_rate*a_gb
+
+		# constrains the norm to lie on a ball of radius c
+		if max_norm:
+			maxnorm_regularization(w_,c)
+		
+		# compute the actual update
+		updates.append((w,w_))
+		updates.append((b,b_))
+
 # Save for later
 #--------
 # def minibatch_gradient_descent_early_stopping(X_tr,y_tr,wts,bs,compute_cost_grad,compute_cost,batch_size=None,

@@ -54,8 +54,9 @@ class Network(object):
 
 		def method_err():
 			err_msg = ('No method provided to fit! Your choices are:'
-						'\n(1) SGD: stochastic gradient descent [CHANGE TO ADAGRAD SOON]'+
-						'\n(2) RMSPROP: hintons mini-batch mini-batch version of rprop [UNDER CONSTRUCTION]')
+						'\n(1) SGD: stochastic gradient descent'+
+						'\n(2) ADAGRAD: ADAptive GRADient learning'+
+						'\n(3) RMSPROP: Hintons mini-batch version of RPROP [NOT IMPLEMENTED]')
 			return err_msg
 
 		if wts is None and bs is None:
@@ -72,6 +73,9 @@ class Network(object):
 			nopt.minibatch_gradient_descent(X,y,wts,bs,self.compute_cost,self.compute_grad,**optim_params)
 			# nopt.minibatch_gradient_descent(X,y,wts,bs,self.compute_cost_grad,self.compute_cost,
 			# 	X_val=X_val,y_val=y_val,**optim_params)
+		
+		elif method == 'ADAGRAD':
+			nopt.minibatch_gradient_descent(X,y,self.n_nodes,wts,bs,self.compute_cost,self.compute_grad,**optim_params)
 		else:
 			print method_err()
 

@@ -1,0 +1,4 @@
+Thoughts:
+
+1) is it really necessary to check if wts=None, bs=None? should a user even be allowed to pass those in? I've never
+once encountered a situation where I want to do that, but perhaps it will come up in the future sometime.. maybe I should take it out for now, it just makes the code look ugly, I think...

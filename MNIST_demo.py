@@ -12,10 +12,6 @@ train_lbl_path = '/home/avasbr/datasets/MNIST/train-labels.idx1-ubyte'
 test_img_path = '/home/avasbr/datasets/MNIST/t10k-images.idx3-ubyte'
 test_lbl_path = '/home/avasbr/datasets/MNIST/t10k-labels.idx1-ubyte'
 
-#######################
-# SET UP TRAINING DATA
-#######################
-
 # define training and validation data
 train_img = idx2numpy.convert_from_file(train_img_path)
 m,row,col = train_img.shape
@@ -40,6 +36,7 @@ for i,idx in enumerate(test_lbl):
 	y_te[i,idx] = 1
 
 validation_flag = False
+
 if validation_flag:
 	# using a validation set to find the best global learning rate - need to experiment with changing learning rate
 	learn_rate_candidates = [0.001,0.01,1,10,100,1000,1e4] # global learning rates
@@ -50,35 +47,42 @@ if validation_flag:
 	y_val = nu.floatX(y_val)
 
 	accuracies = [0.0]*len(learn_rate_candidates)
-	best_accuracy = 0.0
+	best_acc = 0.0
 	best_learn_rate = 0.0
+	
 	for i,learn_rate in enumerate(learn_rate_candidates):
 		print 'Processing learning_rate:',learn_rate,'...'
 		# define a new network to retrain
 		mln_params = {'d':d,'k':k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],'cost_type':'cross_entropy',
 		'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
-		optim_params = {'method':'SGD','n_epochs':200,'batch_size':100,'learn_rate':learn_rate}
+		optim_params = {'method':'SGD','n_epochs':2000,'batch_size':100,'learn_rate':learn_rate}
 		nnet = mln.MultilayerNet(**mln_params)
 		nnet.fit(X_val,y_val,**optim_params)
-		pred,acc = nnet.get_predict_fns()
-		accuracy = acc(X_val,y_val)
-		if accuracy > best_accuracy:
-			best_accuracy = accuracy
+		acc = nnet.score(X_val,y_val)
+		if acc > best_acc:
+			best_acc = accuracy
 			best_learn_rate = learn_rate
 
-	print 'Best accuracy:',best_accuracy
+	print 'Best accuracy:',best_acc
 	print 'Best learning rate:',best_learn_rate
-
-##################
-# PERFORM TRAINING 
-##################
 
 # Train a model with the same learning rate on the training set, test on the testing set:
 print 'Training...'
 mln_params = {'d':d,'k':k,'n_hid':[800,800],'activ':[nu.sigmoid,nu.sigmoid,nu.softmax],'cost_type':'cross_entropy',
-'dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
-optim_params = {'method':'SGD','n_epochs':60,'batch_size':100,'learn_rate':10}
+'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
+optim_params = {'method':'SGD','n_epochs':2000,'batch_size':100,'learn_rate':10}
 nnet = mln.MultilayerNet(**mln_params)
 nnet.fit(X,y,**optim_params)
-print 'Performance:'
 print 100*nnet.score(X_te,y_te),'%'
+
+# print 'Training...'
+
+# mln_params = {'d':d,'k':k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],'cost_type':'cross_entropy','dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
+# # optim_params = {'method':'SGD','n_iter':1000,'learn_rate':0.1}
+# # optim_params = {'method':'SGD','n_epochs':1000,'batch_size':500,'learn_rate':0.13,'early_stopping':True,'patience':7000}
+# optim_params = {'method':'SGD','n_epochs':100,'batch_size':1000,'learn_rate':0.13}
+# nnet = mln.MultilayerNet(**mln_params)
+# nnet.fit(X,y_oh,**optim_params)
+
+# print 'Performance on test set:'
+# print 'Accuracy:',100.*nnet.score(X_te,y_te),'%'
