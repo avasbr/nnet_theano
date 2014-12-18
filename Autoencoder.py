@@ -6,7 +6,7 @@ import sys
 
 class Autoencoder(NeuralNetworkCore.Network):
 
-	def __init__(self,d=None,n_hid=None,activ=None,loss_type='cross_entropy',**loss_params):
+	def __init__(self,d=None,n_hid=None,activ=None,loss_type='cross_entropy',**loss_params,tied_weights=False):
 		''' simply calls the superclass constructor with the appropriate loss function'''
 		
 		# the autoencoder can only have one hidden layer (and therefore, only two activation functions)
@@ -21,8 +21,10 @@ class Autoencoder(NeuralNetworkCore.Network):
 		else:
 			sys.exit("That loss function is not available")
 
+		# functions that will be available after running the 'fit' method on the autoencoder
 		self.decode = None
 		self.encode = None
+		self.get_pretrained_weights = None
 
 	def sparsity_loss(self,wts=None,bs=None):
 		
