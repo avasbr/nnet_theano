@@ -2,6 +2,7 @@ import numpy as np
 import NeuralNetworkCore
 import theano
 import theano.tensor as T
+import Autoencoder as ae
 import sys
 from theano.tensor.shared_randomstreams import RandomStreams
 
@@ -64,9 +65,9 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		prediction and scoring functions '''
 		
 		super(MultilayerNet,self).fit(X,y,wts,bs,**optim_params)
-		self.compile_predict_score(wts,bs)
+		self.compile_multilayer_functions(wts,bs)
 
-	def compile_predict_score(self,wts=None,bs=None):
+	def compile_multilayer_functions(self,wts=None,bs=None):
 		''' compiles prediction and scoring functions for testing '''
 
 		if wts is None and bs is None:

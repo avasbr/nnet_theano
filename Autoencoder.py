@@ -47,15 +47,15 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		return self.squared_error(y,wts) + self.sparsity_loss(wts)
 
-	def fit(self,X,y,wts=None,bs=None,X_val=None,y_val=None,**optim_params):
+	def fit(self,X,wts=None,bs=None,X_val=None,y_val=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
 		encoding and decoding functions '''
 		
-		super(MultilayerNet,self).fit(X,y,wts,bs,**optim_params)
-		self.compile_predict_score(wts,bs)
+		super(Autoencoder,self).fit(X,X,wts,bs,**optim_params)
+		self.compile_autoencoder_functions()		
 
-	def compile_encode_decode(self,wts=None,bs=None):
-		''' compiles the encoding and decoding functions of the autoencoder '''
+	def compile_autoencoder_functions(self,wts=None,bs=None):
+		''' compiles the encoding, decoding, and pre-training functions of the autoencoder '''
 		
 		if wts is None and bs is None:
 			wts = self.wts_
@@ -65,16 +65,4 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		self.encode = theano.function(inputs=[X],outputs=self.activ[0](T.dot(X,wts[0])+b[0]))
 		self.decode = theano.function(inputs=[X],outputs=self.activ[1](T.dot(X,wts[1])+b[1]))
-
-	def pretrain(self,X_in,wts=None,bs=None,**optim_params):
-		''' convenience function which calls 'fit' and returns the encoding
-		weight matrix, which would be used for initializing weights prior to
-		doing fine-tuned supervised training '''
-		
-		if wts is None and bs is None:
-			wts = self.wts_
-			bs = self.bs_
-
-		self.fit(X_in,X_in,wts,bs,**optim_params)
-		
-		return wts[0],bs[0]
+		self.get_pretrained_weights = theano.function(inputs=[X],outputs=[wts[0].get_value(),bs[0].get_value()])
