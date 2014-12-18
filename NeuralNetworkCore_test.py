@@ -45,17 +45,17 @@ class testNeuralNetworkCore(unittest.TestCase):
 			wts_plus, bs_plus = nu.t_reroll(v_plus,nnet.n_nodes)
 			wts_minus, bs_minus = nu.t_reroll(v_minus,nnet.n_nodes)
 			
-			# compute the cost for both sides, and then compute the numerical gradient
-			cost_plus = nnet.compute_cost(X,Y,wts_plus,bs_plus)
-			cost_minus = nnet.compute_cost(X,Y,wts_minus,bs_minus)
+			# compute the loss for both sides, and then compute the numerical gradient
+			loss_plus = nnet.compute_loss(X,Y,wts_plus,bs_plus)
+			loss_minus = nnet.compute_loss(X,Y,wts_minus,bs_minus)
 			
-			return 1.0*(cost_plus-cost_minus)/(2*self.eps) # ( E(weights[i]+eps) - E(weights[i]-eps) )/(2*eps)
+			return 1.0*(loss_plus-loss_minus)/(2*self.eps) # ( E(weights[i]+eps) - E(weights[i]-eps) )/(2*eps)
 
 		compute_ngrad = theano.function(inputs=[v,i,X,Y],outputs=compute_numerical_gradient(v,i,X,Y))
 
 		# 2. compile backprop (theano's autodiff)
-		cost = nnet.compute_cost(X,Y)
-		dW,db = nnet.compute_grad(cost)
+		loss = nnet.compute_loss(X,Y)
+		dW,db = nnet.compute_grad(loss)
 		compute_bgrad = theano.function(inputs=[X,Y],outputs=nu.t_unroll(dW,db))
 
 		# compute the mean difference between the numerical and exact gradients
@@ -74,14 +74,14 @@ class testNeuralNetworkCore(unittest.TestCase):
 	def test_Autoencoder(self):
 		'''  '''
 		ae_params = {'d':self.d,'n_hid':50,'activ':[nu.sigmoid,nu.softmax],
-		'cost_type':'cross_entropy','beta':3,'rho':0.1,'L2_decay':0.1}
+		'loss_type':'cross_entropy','beta':3,'rho':0.1,'L2_decay':0.1}
 		nnet = ae.Autoencoder(**ae_params)
 				
 		self.check_gradients(nnet,self.X,self.X)
 
 	def test_mln_squared_error(self):
 		mln_params = {'d':self.d,'k':self.k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],
-		'cost_type':'squared_error','L1_decay':0.1}
+		'loss_type':'squared_error','L1_decay':0.1}
 		nnet = mln.MultilayerNet(**mln_params)
 
 		self.check_gradients(nnet,self.X,self.Y)
@@ -89,7 +89,7 @@ class testNeuralNetworkCore(unittest.TestCase):
 	def test_mln_singlelayer(self):
 
 		mln_params = {'d':self.d,'k':self.k,'n_hid':[],'activ':[nu.softmax],
-		'cost_type':'cross_entropy','L2_decay':0.1}
+		'loss_type':'cross_entropy','L2_decay':0.1}
 		nnet = mln.MultilayerNet(**mln_params)
 		
 		self.check_gradients(nnet,self.X,self.Y)
@@ -97,7 +97,7 @@ class testNeuralNetworkCore(unittest.TestCase):
 	def test_mln_multilayer(self):
 
 		mln_params = {'d':self.d,'k':self.k,'n_hid':[50,50],'activ':[nu.sigmoid,nu.sigmoid,nu.softmax],
-		'cost_type':'cross_entropy','L2_decay':0.1}
+		'loss_type':'cross_entropy','L2_decay':0.1}
 		nnet = mln.MultilayerNet(**mln_params)
 				
 		self.check_gradients(nnet,self.X,self.Y)

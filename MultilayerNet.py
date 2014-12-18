@@ -8,8 +8,8 @@ from theano.tensor.shared_randomstreams import RandomStreams
 class MultilayerNet(NeuralNetworkCore.Network):
 
 	def __init__(self,d=None,k=None,n_hid=None,activ=None,dropout_flag=False,input_p=None,
-		hidden_p=None, cost_type='cross_entropy',**cost_params):
-		''' simply calls the superclass constructor with the appropriate cost function'''
+		hidden_p=None, loss_type='cross_entropy',**loss_params):
+		''' simply calls the superclass constructor with the appropriate loss function'''
 		
 		self.dropout_flag = dropout_flag
 		# add defensive coding here
@@ -17,14 +17,14 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		self.hidden_p = hidden_p
 		self.srng = RandomStreams() # initialize the random number stream
 
-		if cost_type == 'cross_entropy':
-			super(MultilayerNet,self).__init__(d=d,k=k,n_hid=n_hid,activ=activ,cost_func=self.cross_entropy,**cost_params)		
+		if loss_type == 'cross_entropy':
+			super(MultilayerNet,self).__init__(d=d,k=k,n_hid=n_hid,activ=activ,loss_func=self.cross_entropy,**loss_params)		
 		
-		elif cost_type == 'squared_error':
-			super(MultilayerNet,self).__init__(d=d,k=k,n_hid=n_hid,activ=activ,cost_func=self.squared_error,**cost_params)
+		elif loss_type == 'squared_error':
+			super(MultilayerNet,self).__init__(d=d,k=k,n_hid=n_hid,activ=activ,loss_func=self.squared_error,**loss_params)
 		
 		else:
-			sys.exit("That cost function is not available")
+			sys.exit("That loss function is not available")
 
 		# functions which will be compiled after 'fit' has been run
 		self.predict = None

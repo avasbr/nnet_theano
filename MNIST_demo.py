@@ -53,9 +53,9 @@ if validation_flag:
 	for i,learn_rate in enumerate(learn_rate_candidates):
 		print 'Processing learning_rate:',learn_rate,'...'
 		# define a new network to retrain
-		mln_params = {'d':d,'k':k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],'cost_type':'cross_entropy',
+		mln_params = {'d':d,'k':k,'n_hid':[800],'activ':[nu.sigmoid,nu.softmax],'loss_type':'cross_entropy',
 		'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
-		optim_params = {'method':'SGD','n_epochs':2000,'batch_size':100,'learn_rate':learn_rate}
+		optim_params = {'method':'SGD','n_epochs':100,'batch_size':10,'learn_rate':learn_rate}
 		nnet = mln.MultilayerNet(**mln_params)
 		nnet.fit(X_val,y_val,**optim_params)
 		acc = nnet.score(X_val,y_val)
@@ -68,16 +68,20 @@ if validation_flag:
 
 # Train a model with the same learning rate on the training set, test on the testing set:
 print 'Training...'
-mln_params = {'d':d,'k':k,'n_hid':[800,800],'activ':[nu.sigmoid,nu.sigmoid,nu.softmax],'cost_type':'cross_entropy',
-'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
-optim_params = {'method':'SGD','n_epochs':2000,'batch_size':100,'learn_rate':10}
+
+mln_params = {'d':d,'k':k,'n_hid':[800],'activ':[nu.reLU,nu.softmax],'loss_type':'cross_entropy',
+'dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
+optim_params = {'method':'SGD','n_epochs':100,'batch_size':100,'learn_rate':0.5}
+
 nnet = mln.MultilayerNet(**mln_params)
 nnet.fit(X,y,**optim_params)
+
+print 'Performance on test set:'
 print 100*nnet.score(X_te,y_te),'%'
 
 # print 'Training...'
 
-# mln_params = {'d':d,'k':k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],'cost_type':'cross_entropy','dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
+# mln_params = {'d':d,'k':k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],'loss_type':'cross_entropy','dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
 # # optim_params = {'method':'SGD','n_iter':1000,'learn_rate':0.1}
 # # optim_params = {'method':'SGD','n_epochs':1000,'batch_size':500,'learn_rate':0.13,'early_stopping':True,'patience':7000}
 # optim_params = {'method':'SGD','n_epochs':100,'batch_size':1000,'learn_rate':0.13}

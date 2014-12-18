@@ -10,7 +10,7 @@ import theano.tensor as T
 
 class Network(object):
 
-	def __init__(self,d=None,k=None,n_hid=None,activ=None,cost_func=None,**cost_params):
+	def __init__(self,d=None,k=None,n_hid=None,activ=None,loss_func=None,**loss_params):
 
 		# network parameters
 		self.n_nodes = [d]+n_hid+[k] # number of nodes
@@ -20,8 +20,8 @@ class Network(object):
 		if all(node for node in self.n_nodes):
 			self.set_weights(method='random')
 		
-		self.cost_func = cost_func
-		self.cost_params = cost_params
+		self.loss_func = loss_func
+		self.loss_params = loss_params
 
 	def set_weights(self,wts=None,bs=None,method='random'):
 		''' Initializes the weights and biases of the neural network '''
@@ -49,7 +49,7 @@ class Network(object):
 			self.wts_ = [theano.shared(nu.floatX(w)) for w in wts]
 			self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
-	def fit(self,X,y,wts=None,bs=None,X_val=None,y_val=None,**optim_params):
+	def fit(self,X,y,X_val=None,y_val=None,**optim_params):
 		''' '''
 
 		def method_err():
@@ -59,10 +59,6 @@ class Network(object):
 						'\n(3) RMSPROP: Hintons mini-batch version of RPROP [NOT IMPLEMENTED]')
 			return err_msg
 
-		if wts is None and bs is None:
-			wts = self.wts_
-			bs = self.bs_
-
 		if 'method' not in optim_params or optim_params['method'] is None:
 			sys.exit(method_err())
 		
@@ -70,12 +66,16 @@ class Network(object):
 		del optim_params['method']
 
 		if method == 'SGD':
-			nopt.minibatch_gradient_descent(X,y,wts,bs,self.compute_cost,self.compute_grad,**optim_params)
-			# nopt.minibatch_gradient_descent(X,y,wts,bs,self.compute_cost_grad,self.compute_cost,
-			# 	X_val=X_val,y_val=y_val,**optim_params)
-		
+			nopt.minibatch_gradient_descent(X,y,self.wts_,self.bs_,self.compute_loss,
+				self.compute_grad,**optim_params)
+
 		elif method == 'ADAGRAD':
-			nopt.minibatch_gradient_descent(X,y,self.n_nodes,wts,bs,self.compute_cost,self.compute_grad,**optim_params)
+			nopt.adagrad(X,y,self.n_nodes,self.wts_,self.bs_,
+				self.compute_loss,self.compute_grad,**optim_params)
+		
+		elif method == 'RMSPROP':
+			pass
+		
 		else:
 			print method_err()
 
@@ -85,79 +85,72 @@ class Network(object):
 		''' Performs forward propagation through the network, and updates all intermediate values. if
 		input_dropout and hidden_dropout are specified, uses those to randomly omit hidden units - very 
 		powerful technique'''
-		
+
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
-
+		
 		self.act[0] = self.activ[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
 		if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
 				self.act[i+1] = activ(T.dot(self.act[i],w) + b)
 
-	# compute_cost and compute_grad functions - the former applies forward propagation, and computes the cost
-	# based on the labels. The latter applies autodiff on this cost function and computes the gradients with 
+	# compute_loss and compute_grad functions - the former applies forward propagation, and computes the loss
+	# based on the labels. The latter applies autodiff on this loss function and computes the gradients with 
 	# respect to the weights and biases
 
-	def compute_cost(self,X,y,wts=None,bs=None):
-		''' Given inputs (X,y), returns the cost at the current state of the model (wts,bs) '''
-
+	def compute_loss(self,X,y,wts=None,bs=None):
+		''' Given inputs (X,y), returns the loss at the current state of the model (wts,bs) '''
+		
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 
 		self.fprop(X,wts,bs)
-		cost = self.cost_func(y,wts,bs)
+		loss = self.loss_func(y)
 		
-		return cost
+		return loss
 
-	def compute_grad(self,cost,wts=None,bs=None):
-		''' Given the cost, computes its derivative with respect to the weights and biases of the
+	def compute_grad(self,loss,wts=None,bs=None):
+		''' Given the loss, computes its derivative with respect to the weights and biases of the
 		neural network '''
 
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 
-		grads = T.grad(cost,[p for param in [wts,bs] for p in param])
-		dW = grads[:len(wts)]
-		db = grads[len(wts):]
+		d_loss_d_params = T.grad(loss,[p for param in [wts,bs] for p in param])
+		d_loss_d_wts = d_loss_d_params[:len(wts)]
+		d_loss_d_bs = d_loss_d_params[len(wts):]
 
-		return dW,db
+		return d_loss_d_wts,d_loss_d_bs
 
-	# A few basic cost functions that are used often. The autoencoder builds upon this and adds
-	# a sparsity constraint with a few more cost parameters. In general though, one can still 
-	# define custom cost functions and feed those into this base class 
+	# A few basic loss functions that are used often. The autoencoder builds upon this and adds
+	# a sparsity constraint with a few more loss parameters. In general though, one can still 
+	# define custom loss functions and feed those into this base class 
 	
-	def regularization_cost(self,wts=None):
+	def regularization_loss(self):
 		''' L1 or L2 regularization '''
-		reg_cost = 0
+		reg_loss = 0
 
-		if 'L1_decay' in self.cost_params:
-			reg_cost += self.cost_params['L1_decay']*sum([T.sum(T.abs_(w)) for w in wts])
+		if 'L1_decay' in self.loss_params:
+			reg_loss += self.loss_params['L1_decay']*sum([T.sum(T.abs_(w)) for w in self.wts_])
 		
-		if 'L2_decay' in self.cost_params:
-			reg_cost += 0.5*self.cost_params['L2_decay']*sum([T.sum(w**2) for w in wts])
+		if 'L2_decay' in self.loss_params:
+			reg_loss += 0.5*self.loss_params['L2_decay']*sum([T.sum(w**2) for w in self.wts_])
 
-		return reg_cost
+		return reg_loss
 
-	def cross_entropy(self,y,wts=None,bs=None):
-		''' basic cross entropy cost function with optional regularization'''
+	def cross_entropy(self,y):
+		''' basic cross entropy loss function with optional regularization'''
 		
-		if wts is None and bs is None:
-			wts = self.wts_
-			bs = self.bs_
-		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1)) + self.regularization_cost(wts)
+		E = T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1)) + self.regularization_loss()
 
 		return E
 
-	def squared_error(self,y,wts=None,bs=None):
-		''' basic squared error cost function with optional regularization'''
+	def squared_error(self,y):
+		''' basic squared error loss function with optional regularization'''
 
-		if wts is None and bs is None:
-			wts = self.wts_
-			bs = self.bs_
-		
-		E = T.mean(T.sum((y-self.act[-1])**2)) + self.regularization_cost(wts)
+		E = T.mean(T.sum((y-self.act[-1])**2)) + self.regularization_loss()
 
 		return E
