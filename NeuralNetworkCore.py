@@ -13,11 +13,11 @@ class Network(object):
 	def __init__(self,d=None,k=None,n_hid=None,activ=None,loss_func=None,**loss_params):
 
 		# network parameters
-		self.n_nodes = [d]+n_hid+[k] # number of nodes
-		self.act = (len(self.n_nodes)-1)*[None]
+		self.num_nodes = [d]+n_hid+[k] # number of nodes
+		self.act = (len(self.num_nodes)-1)*[None]
 		self.activ = activ
 				
-		if all(node for node in self.n_nodes):
+		if all(node for node in self.num_nodes):
 			self.set_weights(method='random')
 		
 		self.loss_func = loss_func
@@ -28,18 +28,18 @@ class Network(object):
 
 		# weights and biases
 		if wts is None and bs is None:
-			self.wts_ = (len(self.n_nodes)-1)*[None]
-			self.bs_ = (len(self.n_nodes)-1)*[None]
+			self.wts_ = (len(self.num_nodes)-1)*[None]
+			self.bs_ = (len(self.num_nodes)-1)*[None]
 			
 			if method == 'random':
-				for i,(n1,n2) in enumerate(zip(self.n_nodes[:-1],self.n_nodes[1:])):
+				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 					v = 4.*np.sqrt(6./(n1+n2+1))
 					self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n1,n2)-v)) 
 					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
 			
 			# fixed weights, mainly for debugging purposes
 			else:
-				for i,(n1,n2) in enumerate(zip(self.n_nodes[:-1],self.n_nodes[1:])):
+				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 					self.wts_[i] = theano.shared(nu.floatX(np.reshape(0.1*np.range(n1*n2),n1,n2)))
 					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
 		else:
@@ -65,12 +65,13 @@ class Network(object):
 		method = optim_params['method']
 		del optim_params['method']
 
+		params = 
 		if method == 'SGD':
 			nopt.minibatch_gradient_descent(X,y,self.wts_,self.bs_,self.compute_loss,
 				self.compute_grad,**optim_params)
 
 		elif method == 'ADAGRAD':
-			nopt.adagrad(X,y,self.n_nodes,self.wts_,self.bs_,
+			nopt.adagrad(X,y,self.num_nodes,self.wts_,self.bs_,
 				self.compute_loss,self.compute_grad,**optim_params)
 		
 		elif method == 'RMSPROP':
@@ -119,9 +120,9 @@ class Network(object):
 			wts = self.wts_
 			bs = self.bs_
 
-		d_loss_d_params = T.grad(loss,[p for param in [wts,bs] for p in param])
-		d_loss_d_wts = d_loss_d_params[:len(wts)]
-		d_loss_d_bs = d_loss_d_params[len(wts):]
+		# compute the gradients for the weights and loss
+		d_loss_d_wts = T.grad(loss,[wt for wt in wts])
+		d_loss_d_bs = T.grad(loss,[b for b in bs])
 
 		return d_loss_d_wts,d_loss_d_bs
 

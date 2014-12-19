@@ -4,77 +4,30 @@ import theano.tensor as T
 import nnetutils as nu
 import copy
 
-def maxnorm_regularization(w,c):
-	''' clamping function which restricts the L2 norm of a weight vector to be of length c, in the L2 sense '''
-	l2n = T.sum(w**2,axis=0)
-	w /= ((l2n > c**2)*T.sqrt(l2n) + (l2n < c**2)*1.)
-
-def vanilla_gradient_descent(X_tr,y_tr,wts,bs,compute_loss,compute_grad,n_iter,learn_rate):
-	''' Simple, fat-free, reduced-sugar, low-calorie vanilla gradient descent
+def mini_batch_optimize(X_tr,y_tr,wts,bs,compute_loss,compute_grad,batch_size=100,
+	num_epochs=500,method=adagrad,**optim_params):
 	
-	Parameters:
-	-----------
-	
-	Returns:
-	--------
-	'''
-
-	# compile the train function
-	X = T.matrix('X') # typed, input variable
-	y = T.matrix('y') # type, output variable
-	
-	loss = compute_loss(X,y,wts,bs)
-	d_loss_d_wts,d_loss_d_bs = compute_grad(loss,wts,bs) # the loss and gradients
-	
-	updates = []
-	for wt,b,d_loss_d_wt,d_loss_d_b in zip(wts,bs,d_loss_d_wts,dbs):
-		updates.append((wt,wt-learn_rate*d_loss_d_wt))
-		updates.append((b,b-learn_rate*d_loss_d_b))
-
-	# compiles the training function which defines how the losss will be changed, etc
-	train = theano.function(inputs=[X,y],updates=updates)
-	
-	# simple, fat-free, reduced sugar vanilla gradient descent
-	for i in range(n_iter):
-		train(X_tr,y_tr)
-
-def rmsprop(X_tr,y_tr,batch_size,n_epochs=1000):
-	pass
-
-def minibatch_gradient_descent(X_tr,y_tr,wts,bs,compute_loss,compute_grad,batch_size=100,
-	n_epochs=500,learn_rate=0.1,max_norm=False,c=5):
-	''' Assuming all the data can fit in memory, runs mini-batch gradient descent with optional max-norm
-	regularization. This tends to work well with dropout + rectified linear activation functions '''
-	
+	# define the mini-batches
 	m = X_tr.shape[0] # total number of training instances
 	n_batches = int(m/batch_size) # number of batches, based on batch size
 	leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
 	epoch = 0
-	
+
+	# compile the training and validation functions
+	loss = compute_loss(X,y,wts,bs) # loss
+	d_loss_d_wts,d_loss_d_ = compute_grad(loss,wts,bs) # gradient 
+	 
+	params = [p for param in [wts,bs] for p in param] # all model parameters...
+	d_loss_d_params = [d_loss_d_p in p for param in [d_loss_d_wts, d_loss_d_bs] for d_loss_d_p in param] #..and their gradients
+
+	updates = method(params,d_loss_d_params,**optim_params) # update rule
+
 	X = T.matrix('X') # input variable
 	y = T.matrix('y') # output variable
-	
-	loss = compute_loss(X,y,wts,bs) # loss
-	d_loss_d_wts,d_loss_d_bs = compute_grad(loss,wts,bs) # gradient 
+	train = theano.function(inputs=[X,y],updates=updates,mode='FAST_RUN',allow_input_downcast=True)
+	evaluate = theano.function(inputs=[X,y],outputs=loss,mode='FAST_RUN',allow_input_downcast=True)
 
-	updates = []
-	for wt,b,d_loss_d_wt,d_loss_d_b in zip(wts,bs,d_loss_d_wts,d_loss_d_bs):
-		
-		wt_ = wt-learn_rate*d_loss_d_wt
-		b_ = b-learn_rate*d_loss_d_b
-		
-		# constrains the norm to lie on a ball of radius c
-		if max_norm:
-			maxnorm_regularization(wt_,c)
-
-		# compute the actual update
-		updates.append((wt,wt_))
-		updates.append((b,b_))
-	
-	# compiles the training and validation functions
-	train = theano.function(inputs=[X,y],updates=updates,mode='FAST_RUN',allow_input_downcast=True) # training function
-	evaluate = theano.function(inputs=[X,y],outputs=loss,mode='FAST_RUN',allow_input_downcast=True) # useful also for validation purposes
-	
+	# iterate through the training examples
 	while epoch < n_epochs:
 		epoch += 1
 		tr_idx = np.random.permutation(m) # randomly shuffle the data indices
@@ -93,8 +46,30 @@ def minibatch_gradient_descent(X_tr,y_tr,wts,bs,compute_loss,compute_grad,batch_
 			tr_loss = evaluate(X_tr,y_tr)
 			print 'Epoch: %s, Training error: %.3f'%(epoch,tr_loss)
 
-def adagrad(X_tr,y_tr,n_nodes,wts,bs,compute_loss,compute_grad,batch_size=100,n_epochs=500,
-	master_learn_rate=1.,max_norm=False,c=5):
+def maxnorm_regularization(w,c):
+	''' clamping function which restricts the weight vector to lie on L2 ball of radius c '''
+	l2n = T.sum(w**2,axis=0)
+	w /= ((l2n > c**2)*T.sqrt(l2n) + (l2n < c**2)*1.)
+
+def stochastic_gradient_descent(params,d_loss_d_params,learn_rate=0.1,max_norm=False,c=5):
+	''' Assuming all the data can fit in memory, runs stochastic gradient descent with optional max-norm
+	regularization. This tends to work well with dropout + rectified linear activation functions '''
+	
+	updates = []
+	for param,d_loss_d_param in zip(params,d_loss_d_params):
+		param_ = param - learn_rate*d_loss_d_param
+		
+		if max_norm:
+			maxnorm_regularization(param_,c)
+
+		updates.append((param,param_))
+
+	return updates
+
+def rmsprop(X_tr,y_tr,batch_size,n_epochs=100):
+	
+
+def adagrad(params,d_loss_d_params,learn_rate=1.,eps=1e-6):
 	''' adaptive gradient method - typically works better than vanilla SGD and has some 
 	nice theoretical guarantees
 
@@ -143,67 +118,26 @@ def adagrad(X_tr,y_tr,n_nodes,wts,bs,compute_loss,compute_grad,batch_size=100,n_
 	wts,bs
 	'''
 
-	# compile the training function	
-	m = X_tr.shape[0] # total number of training instances
-	n_batches = int(m/batch_size) # number of batches, based on batch size
-	leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
-	epoch = 0
-	eps = 1e-7
-
-	X = T.matrix('X') # input variable
-	y = T.matrix('y') # output variable
-	
-	loss = compute_loss(X,y,wts,bs) # loss
-	d_loss_d_wts,d_loss_d_bs = compute_grad(loss,wts,bs) # gradient 
-	
 	# initialize the historical gradient parameters
-	h_d_loss_d_wts = [None]*(len(n_nodes)-1); h_d_loss_d_bs = [None]*(len(n_nodes)-1)
+	hist_d_loss_d_params = [theano.shared(nu.floatX(np.zeros(p.get_value().shape))) for p in params]
 	
-	for i,(n1,n2) in enumerate(zip(n_nodes[:-1],n_nodes[1:])):
-		h_d_loss_d_wts[i] = nu.floatX(np.zeros((n1,n2)))
-		h_d_loss_d_bs[i] = nu.floatX(np.zeros(n2))
-
 	updates = []
-	
-	for wt,b,d_loss_d_wt,d_loss_d_b,h_d_loss_d_wt,h_d_loss_d_b in \
-		zip(wts,bs,d_loss_d_wts,d_loss_d_bs,h_d_loss_d_wts,h_d_loss_d_bs):
+	for param,d_loss_d_param,hist_d_loss_d_param in \
+		zip(params,d_loss_d_params,hist_d_loss_d_params):
 		
 		# historical gradient
-		h_d_loss_d_wt += d_loss_d_wt**2
-		h_d_loss_d_b += d_loss_d_b**2
-		
-		# update rule
-		wt_ = wt - master_learn_rate*d_loss_d_wt/(T.sqrt(h_d_loss_d_wt) + eps)
-		b_ = b - master_learn_rate*d_loss_d_b/(T.sqrt(h_d_loss_d_b) + eps)
+		hist_d_loss_d_param_ = hist_d_loss_d_param + d_loss_d_param**2
+		param_ = param - learn_rate*d_loss_d_param/(T.sqrt(hist_d_loss_param_) + eps) 
 
 		# constrains the norm to lie on a ball of radius c
 		if max_norm:
-			maxnorm_regularization(wt_,c)
+			maxnorm_regularization(param_,c)
 		
 		# compute the actual update
-		updates.append((wt,wt_))
-		updates.append((b,b_))
+		update.append(param,param_)
+		update.append(hist_d_loss_d_params,hist_d_loss_d_params_) # we have to update this too
 
-	train = theano.function(inputs=[X,y],updates=updates,mode='FAST_RUN',allow_input_downcast=True) # training function
-	evaluate = theano.function(inputs=[X,y],outputs=loss,mode='FAST_RUN',allow_input_downcast=True) # useful also for validation purposes
-	
-	while epoch < n_epochs:
-		epoch += 1
-		tr_idx = np.random.permutation(m) # randomly shuffle the data indices
-		ss_idx = range(0,m,batch_size)
-		ss_idx[-1] += leftover # add the leftovers to the last batch
-		
-		# run through a full epoch
-		for idx,(start_idx,stop_idx) in enumerate(zip(ss_idx[:-1],ss_idx[1:])):			
-			n_batch_iter = (epoch-1)*n_batches + idx # total number of batches processed up until now
-			batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
-			train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
-			# uncomment the next two lines for speed - this is purely for reporting purposes, should be in a log
-			# tr_loss = evaluate(X_tr,y_tr)
-			# print 'iter/epoch: %i/%i, training loss: %.3f'%(idx,epoch,tr_loss)
-		if epoch%10 == 0:
-			tr_loss = evaluate(X_tr,y_tr)
-			print 'Epoch: %s, Training error: %.3f'%(epoch,tr_loss)
+	return updates
 
 # Save for later
 #--------

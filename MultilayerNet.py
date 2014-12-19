@@ -13,6 +13,7 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		''' simply calls the superclass constructor with the appropriate loss function'''
 		
 		self.dropout_flag = dropout_flag
+		
 		# add defensive coding here
 		self.input_p = input_p
 		self.hidden_p = hidden_p
