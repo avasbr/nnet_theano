@@ -42,8 +42,8 @@ class testNeuralNetworkCore(unittest.TestCase):
 			v_minus = T.inc_subtensor(v[i],-1.0*self.eps)
 
 			# roll it back into the weight matrices and bias vectors
-			wts_plus, bs_plus = nu.t_reroll(v_plus,nnet.n_nodes)
-			wts_minus, bs_minus = nu.t_reroll(v_minus,nnet.n_nodes)
+			wts_plus, bs_plus = nu.t_reroll(v_plus,nnet.num_nodes)
+			wts_minus, bs_minus = nu.t_reroll(v_minus,nnet.num_nodes)
 			
 			# compute the loss for both sides, and then compute the numerical gradient
 			loss_plus = nnet.compute_loss(X,Y,wts_plus,bs_plus)

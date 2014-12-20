@@ -7,10 +7,10 @@ import MultilayerNet as mln
 
 print 'Loading data...'
 
-train_img_path = '/home/avasbr/datasets/MNIST/train-images.idx3-ubyte'
-train_lbl_path = '/home/avasbr/datasets/MNIST/train-labels.idx1-ubyte' 
-test_img_path = '/home/avasbr/datasets/MNIST/t10k-images.idx3-ubyte'
-test_lbl_path = '/home/avasbr/datasets/MNIST/t10k-labels.idx1-ubyte'
+train_img_path = '/home/bhargav/datasets/MNIST/train-images.idx3-ubyte'
+train_lbl_path = '/home/bhargav/datasets/MNIST/train-labels.idx1-ubyte' 
+test_img_path = '/home/bhargav/datasets/MNIST/t10k-images.idx3-ubyte'
+test_lbl_path = '/home/bhargav/datasets/MNIST/t10k-labels.idx1-ubyte'
 
 # define training and validation data
 train_img = idx2numpy.convert_from_file(train_img_path)
@@ -35,46 +35,20 @@ y_te = np.zeros((m_te,k)) # 'one-hot' representation
 for i,idx in enumerate(test_lbl):
 	y_te[i,idx] = 1
 
-validation_flag = False
-
-if validation_flag:
-	# using a validation set to find the best global learning rate - need to experiment with changing learning rate
-	learn_rate_candidates = [0.001,0.01,1,10,100,1000,1e4] # global learning rates
-	X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.8)
-	X_tr = nu.floatX(X_tr)
-	y_tr = nu.floatX(y_tr)
-	X_val = nu.floatX(X_val)
-	y_val = nu.floatX(y_val)
-
-	accuracies = [0.0]*len(learn_rate_candidates)
-	best_acc = 0.0
-	best_learn_rate = 0.0
-	
-	for i,learn_rate in enumerate(learn_rate_candidates):
-		print 'Processing learning_rate:',learn_rate,'...'
-		# define a new network to retrain
-		mln_params = {'d':d,'k':k,'n_hid':[800],'activ':[nu.sigmoid,nu.softmax],'loss_type':'cross_entropy',
-		'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
-		optim_params = {'method':'SGD','n_epochs':100,'batch_size':10,'learn_rate':learn_rate}
-		nnet = mln.MultilayerNet(**mln_params)
-		nnet.fit(X_val,y_val,**optim_params)
-		acc = nnet.score(X_val,y_val)
-		if acc > best_acc:
-			best_acc = accuracy
-			best_learn_rate = learn_rate
-
-	print 'Best accuracy:',best_acc
-	print 'Best learning rate:',best_learn_rate
-
 # Train a model with the same learning rate on the training set, test on the testing set:
 print 'Training...'
 
-mln_params = {'d':d,'k':k,'n_hid':[800],'activ':[nu.reLU,nu.softmax],'loss_type':'cross_entropy',
+# attempting to replicate the deep learning tutorial "modern" net 
+mln_params = {'d':d,'k':k,'n_hid':[800,800],'activ':[nu.reLU,nu.reLU,nu.softmax],'loss_type':'cross_entropy',
 'dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
-optim_params = {'method':'SGD','n_epochs':100,'batch_size':100,'learn_rate':0.5}
+
+# various methods to try - simply change what goes into the fit function
+sgd_params = {'method':'SGD','num_epochs':100,'batch_size':600,'learn_rate':0.5}
+rmsprop_params = {'method':'RMSPROP','num_epochs':100,'batch_size':600,'learn_rate':0.001,'rho':0.9}
+adagrad_params = {'method':'ADAGRAD','num_epochs':100,'batch_size':600,'learn_rate':1.}
 
 nnet = mln.MultilayerNet(**mln_params)
-nnet.fit(X,y,**optim_params)
+nnet.fit(X,y,**sgd_params)
 
 print 'Performance on test set:'
 print 100*nnet.score(X_te,y_te),'%'

@@ -6,7 +6,7 @@ import sys
 
 class Autoencoder(NeuralNetworkCore.Network):
 
-	def __init__(self,d=None,n_hid=None,activ=None,loss_type='cross_entropy',**loss_params,tied_weights=False):
+	def __init__(self,d=None,n_hid=None,activ=None,loss_type='cross_entropy',**loss_params):
 		''' simply calls the superclass constructor with the appropriate loss function'''
 		
 		# the autoencoder can only have one hidden layer (and therefore, only two activation functions)

@@ -4,50 +4,9 @@ import theano.tensor as T
 import nnetutils as nu
 import copy
 
-def mini_batch_optimize(X_tr,y_tr,wts,bs,compute_loss,compute_grad,batch_size=100,
-	num_epochs=500,method=adagrad,**optim_params):
-	
-	# define the mini-batches
-	m = X_tr.shape[0] # total number of training instances
-	n_batches = int(m/batch_size) # number of batches, based on batch size
-	leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
-	epoch = 0
-
-	# compile the training and validation functions
-	loss = compute_loss(X,y,wts,bs) # loss
-	d_loss_d_wts,d_loss_d_ = compute_grad(loss,wts,bs) # gradient 
-	 
-	params = [p for param in [wts,bs] for p in param] # all model parameters...
-	d_loss_d_params = [d_loss_d_p in p for param in [d_loss_d_wts, d_loss_d_bs] for d_loss_d_p in param] #..and their gradients
-
-	updates = method(params,d_loss_d_params,**optim_params) # update rule
-
-	X = T.matrix('X') # input variable
-	y = T.matrix('y') # output variable
-	train = theano.function(inputs=[X,y],updates=updates,mode='FAST_RUN',allow_input_downcast=True)
-	evaluate = theano.function(inputs=[X,y],outputs=loss,mode='FAST_RUN',allow_input_downcast=True)
-
-	# iterate through the training examples
-	while epoch < n_epochs:
-		epoch += 1
-		tr_idx = np.random.permutation(m) # randomly shuffle the data indices
-		ss_idx = range(0,m,batch_size)
-		ss_idx[-1] += leftover # add the leftovers to the last batch
-		
-		# run through a full epoch
-		for idx,(start_idx,stop_idx) in enumerate(zip(ss_idx[:-1],ss_idx[1:])):			
-			n_batch_iter = (epoch-1)*n_batches + idx # total number of batches processed up until now
-			batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
-			train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
-			# uncomment the next two lines for speed - this is purely for reporting purposes, should be in a log
-			# tr_loss = evaluate(X_tr,y_tr)
-			# print 'iter/epoch: %i/%i, training loss: %.3f'%(idx,epoch,tr_loss)
-		if epoch%10 == 0:
-			tr_loss = evaluate(X_tr,y_tr)
-			print 'Epoch: %s, Training error: %.3f'%(epoch,tr_loss)
-
 def maxnorm_regularization(w,c):
 	''' clamping function which restricts the weight vector to lie on L2 ball of radius c '''
+	
 	l2n = T.sum(w**2,axis=0)
 	w /= ((l2n > c**2)*T.sqrt(l2n) + (l2n < c**2)*1.)
 
@@ -66,8 +25,23 @@ def stochastic_gradient_descent(params,d_loss_d_params,learn_rate=0.1,max_norm=F
 
 	return updates
 
-def rmsprop(X_tr,y_tr,batch_size,n_epochs=100):
+def rmsprop(params,d_loss_d_params,learn_rate=0.001,rho=0.9,eps=1e-6):
+
+	updates = []
+	hist_d_loss_d_params = [theano.shared(nu.floatX(np.zeros(param.get_value().shape))) for param in params]
 	
+	for param,d_loss_d_param,hist_d_loss_d_param in zip(params,d_loss_d_params,hist_d_loss_d_params):
+
+		# historical gradient
+		hist_d_loss_d_param_ = rho*hist_d_loss_d_param*(1-rho)*d_loss_d_param**2
+		
+		# parameter update
+		param_ = param - learn_rate*d_loss_d_param/T.sqrt(hist_d_loss_d_param_ + eps)
+
+		updates.append((hist_d_loss_d_param,hist_d_loss_d_param_)) # we have to update this too
+		updates.append((param,param_))
+
+	return updates
 
 def adagrad(params,d_loss_d_params,learn_rate=1.,eps=1e-6):
 	''' adaptive gradient method - typically works better than vanilla SGD and has some 
@@ -76,32 +50,11 @@ def adagrad(params,d_loss_d_params,learn_rate=1.,eps=1e-6):
 	Parameters:
 	----------
 
-	param: X_tr - training dataset
-	type: theano matrix
+	param: params - model parameters
+	type: list of theano shared variables
 
-	param: y_tr - training labels
-	type: theano matrix
-	
-	param: n_nodes - number of nodes per layer (except the input)
-	type: list of ints
-
-	param: wts - weights which need to be optimized
-	type: shared theano variable
-
-	param: bs - bias weights
-	type: shared theano variable
-
-	param: compute_loss - computes the loss at current point
-	type: function
-	
-	param: compute_grad - function to compute the loss and gradient at the current point
-	type: function
-
-	param: batch_size - number of examples per mini-batch
-	type: int
-
-	param: n_epochs - the number of full runs through the dataset
-	type: int
+	param: d_loss_d_params - derivative of the loss with respect to the model parameters
+	type: list of theano variables
 
 	param: X_val - validation dataset
 	type: theano matrix
@@ -117,25 +70,20 @@ def adagrad(params,d_loss_d_params,learn_rate=1.,eps=1e-6):
 	--------
 	wts,bs
 	'''
-
 	# initialize the historical gradient parameters
-	hist_d_loss_d_params = [theano.shared(nu.floatX(np.zeros(p.get_value().shape))) for p in params]
+	hist_d_loss_d_params = [theano.shared(nu.floatX(np.zeros(param.get_value().shape))) for param in params]
 	
 	updates = []
-	for param,d_loss_d_param,hist_d_loss_d_param in \
-		zip(params,d_loss_d_params,hist_d_loss_d_params):
+	for param,d_loss_d_param,hist_d_loss_d_param in zip(params,d_loss_d_params,hist_d_loss_d_params):
 		
 		# historical gradient
 		hist_d_loss_d_param_ = hist_d_loss_d_param + d_loss_d_param**2
-		param_ = param - learn_rate*d_loss_d_param/(T.sqrt(hist_d_loss_param_) + eps) 
-
-		# constrains the norm to lie on a ball of radius c
-		if max_norm:
-			maxnorm_regularization(param_,c)
 		
-		# compute the actual update
-		update.append(param,param_)
-		update.append(hist_d_loss_d_params,hist_d_loss_d_params_) # we have to update this too
+		# parameter update
+		param_ = param - learn_rate*d_loss_d_param/T.sqrt(hist_d_loss_d_param_ + eps)
+		
+		updates.append((hist_d_loss_d_param,hist_d_loss_d_param_)) # we have to update this too
+		updates.append((param,param_))
 
 	return updates
 

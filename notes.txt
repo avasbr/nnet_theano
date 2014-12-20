@@ -1,4 +1,15 @@
-Thoughts:
+Things left to do (in order of priority):
+-----------------------------------------
+- Profile the code and find bottlenecks
+- Learn about theano's debugging capabilities
+- Add logging
+- Add configuration files
+- Add pre-training
+- Add momentum (normal and nesterov)
+- Add support for L-BFGS-B and CG
 
-1) is it really necessary to check if wts=None, bs=None? should a user even be allowed to pass those in? I've never
-once encountered a situation where I want to do that, but perhaps it will come up in the future sometime.. maybe I should take it out for now, it just makes the code look ugly, I think...
+Non-critical things that still need to be done:
+-----------------------------------------------
+- Add defensive code everywhere
+- Start getting datasets together
+- Order a GeForce GTX 560 (or just go to best-buy)
