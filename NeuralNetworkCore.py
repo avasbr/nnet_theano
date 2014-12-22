@@ -91,9 +91,9 @@ class Network(object):
 		X = T.matrix('X') # input variable
 		y = T.matrix('y') # output variable
 		
-		tr_loss, val_loss = self.compute_loss(X,y,self.wts_,self.bs_) # loss functions
+		optim_loss, eval_loss = self.compute_loss(X,y,self.wts_,self.bs_) # loss functions
 		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters
-		d_loss_d_params = [T.grad(tr_loss,param) for param in params] # gradient of each model param w.r.t training loss
+		d_loss_d_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
 		
 		# define the update rule 
 		updates = []
@@ -126,12 +126,12 @@ class Network(object):
 
 		# self.compute_training_loss = theano.function(inputs=[X,y],outputs=tr_loss,allow_input_downcast=True,
 		# 	mode=theano.compile.MonitorMode(post_func=detect_nan))
-		self.compute_training_loss = theano.function(inputs=[X,y],outputs=tr_loss,allow_input_downcast=True,
+		self.compute_optim_loss = theano.function(inputs=[X,y],outputs=optim_loss,allow_input_downcast=True,
 			mode='FAST_RUN')
 
 		# self.compute_validation_loss = theano.function(inputs=[X,y],outputs=val_loss,allow_input_downcast=True,
 		# 	mode=theano.compile.MonitorMode(post_func=detect_nan))
-		self.compute_validation_loss = theano.function(inputs=[X,y],outputs=val_loss,allow_input_downcast=True,
+		self.compute_eval_loss = theano.function(inputs=[X,y],outputs=eval_loss,allow_input_downcast=True,
 			mode='FAST_RUN')
 
 		# minibatch optimization 
@@ -177,7 +177,7 @@ class Network(object):
 				self.train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
 				
 			if epoch%10 == 0:
-				tr_loss = self.compute_training_loss(X_tr,y_tr)
+				tr_loss = self.compute_eval_loss(X_tr,y_tr)
 				print 'Epoch: %s, Training error: %.3f'%(epoch,tr_loss)
 
 	def fprop(self,X,wts=None,bs=None):
@@ -208,23 +208,16 @@ class Network(object):
 
 		self.fprop(X,wts,bs)
 
-		validation_loss = self.loss_func(y)
-		training_loss = self.training_loss(y,wts)
+		eval_loss = self.loss_func(y) # this is the loss that will be used to evaluate any set
+		optim_loss = self.loss_func(y) + self.regularization(wts) # this is the loss which will be specifically optimized over
 
-		return training_loss,validation_loss
+		return optim_loss,eval_loss
 
 	# A few basic loss functions that are used often. The autoencoder builds upon this and adds
 	# a sparsity constraint with a few more loss parameters. In general though, one can still 
 	# define custom loss functions and feed those into this base class 
-	
-	def training_loss(self,y,wts=None):
-		''' Full training loss function '''
-		if wts is None:
-			wts = self.wts_
-		
-		return self.loss_func(y) + self.regularization_loss(wts)
 
-	def regularization_loss(self,wts=None):
+	def regularization(self,wts=None):
 		''' L1 or L2 regularization '''
 		
 		if wts is None:
@@ -248,4 +241,4 @@ class Network(object):
 	def squared_error(self,y):
 		''' basic squared error loss function with optional regularization'''
 
-		return T.mean(T.sum((y-self.act[-1])**2)) + self.regularization_loss()
+		return T.mean(T.sum((y-self.act[-1])**2))

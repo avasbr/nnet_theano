@@ -37,29 +37,20 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		if p > 0:
 			# randomly dropout p activations 
 			retain_prob = 1-p
-			act *= self.srng.binomial(act.shape,p=retain_prob,dtype=theano.config.floatX)
+			return act*self.srng.binomial(act.shape,p=retain_prob,dtype=theano.config.floatX)
 
-	def fprop(self,X,wts=None,bs=None):
-		''' Performs forward propagation through the network, and updates all intermediate values. if
-		input_dropout and hidden_dropout are specified, uses those to randomly omit hidden units - very 
-		powerful technique'''
+	def dropout_fprop(self,X,wts=None,bs=None):
+		''' Performs forward propagation through the network, incorporating dropout, 
+		and updates all intermediate values '''
 		
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 
-		# if we're doing dropout...
-		if self.dropout_flag:
-			self.dropout(X,self.input_p) # apply dropout to the input
-			self.act[0] = self.activ[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
-			if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
-				for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
-					self.dropout(self.act[i],self.hidden_p) # apply dropout to the hidden units
-					self.act[i+1] = activ(T.dot(self.act[i],w) + b)
-
-		# otherwise, just fall back to normal forward propagation in the superclass
-		else:
-			super(MultilayerNet,self).fprop(X,wts,bs)
+		self.act[0] = self.activ[0](T.dot(self.dropout(X,self.input_p),wts[0]) + bs[0]) # use the first data matrix to compute the first activation
+		if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
+			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
+				self.act[i+1] = activ(T.dot(self.dropout(self.act[i],self.hidden_p),w) + b)
 
 	def fit(self,X,y,wts=None,bs=None,X_val=None,y_val=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
@@ -67,6 +58,33 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		
 		super(MultilayerNet,self).fit(X,y,wts,bs,**optim_params)
 		self.compile_multilayer_functions(wts,bs)
+
+	def compute_loss(self,X,y,wts=None,bs=None):
+		''' Given inputs (X,y), returns the loss at the current state of the model (wts,bs) '''
+		
+		# based on if dropout needs to be used, this function will either 
+		if self.dropout_flag:
+			if wts is None and bs is None:
+				wts = self.wts_
+				bs = self.bs_
+
+			# the optimization loss is based on the output from applying dropout
+			self.dropout_fprop(X,wts,bs)
+			optim_loss = self.loss_func(y) + self.regularization(wts)
+
+			# the evaluation loss is based on the expected value of the weights 
+			eval_wts = [wt.get_value() for wt in self.wts_]
+			eval_bs = [b.get_value() for b in self.bs_]
+			eval_wts[0] *= self.input_p
+			for wt in eval_wts[1:]:
+				wt *= self.hidden_p
+			self.fprop(X,eval_wts,eval_bs)
+			eval_loss = self.loss_func(y)
+
+			return optim_loss,eval_loss
+
+		else:
+			return super(MultilayerNet,self).compute_loss(X,y,wts,bs)
 
 	def compile_multilayer_functions(self,wts=None,bs=None):
 		''' compiles prediction and scoring functions for testing '''

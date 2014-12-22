@@ -10,7 +10,7 @@ def maxnorm_regularization(w,c):
 	l2n = T.sum(w**2,axis=0)
 	w /= ((l2n > c**2)*T.sqrt(l2n) + (l2n < c**2)*1.)
 
-def stochastic_gradient_descent(params,d_loss_d_params,learn_rate=0.1,max_norm=False,c=5):
+def sgd(params,d_loss_d_params,learn_rate=0.1,max_norm=False,c=5):
 	''' Assuming all the data can fit in memory, runs stochastic gradient descent with optional max-norm
 	regularization. This tends to work well with dropout + rectified linear activation functions '''
 	
