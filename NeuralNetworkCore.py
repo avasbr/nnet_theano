@@ -17,7 +17,7 @@ class Network(object):
 		self.activ = activ
 				
 		if all(node for node in self.num_nodes):
-			self.set_weights(method='random')
+			self.set_weights(method='gauss')
 		
 		self.loss_func = loss_func
 		self.loss_params = loss_params
@@ -33,7 +33,6 @@ class Network(object):
 			# 	for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 			
 			if method == 'gauss':
-				print 'oh hello'
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 					self.wts_[i] = theano.shared(nu.floatX(0.01*np.random.randn(n1,n2)))
 					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
