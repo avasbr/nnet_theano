@@ -38,14 +38,14 @@ for i,idx in enumerate(test_lbl):
 # Train a model with the same learning rate on the training set, test on the testing set:
 print 'Training...'
 
-# attempting to replicate the deep learning tutorial "modern" net 
-mln_params = {'d':d,'k':k,'num_hid':[8192,8192],'activ':[nu.reLU,nu.reLU,nu.softmax],'loss_func':nu.cross_entropy,
+mln_params = {'d':d,'k':k,'num_hid':[1024,1024],'activ':[nu.reLU,nu.reLU,nu.softmax],'loss_func':nu.cross_entropy,
 'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
 
 # various methods to try - simply change what goes into the fit function
-sgd_params = {'method':'SGD','num_epochs':100,'batch_size':600,'learn_rate':0.5}
-rmsprop_params = {'method':'RMSPROP','num_epochs':100,'batch_size':128,'learn_rate':0.001,'rho':0.9}
-adagrad_params = {'method':'ADAGRAD','num_epochs':100,'batch_size':128,'learn_rate':1.}
+sgd_params = {'method':'SGD','num_epochs':100,'batch_size':128,'learn_rate':0.5}
+rmsprop_params = {'method':'RMSPROP','num_epochs':100,'batch_size':128,'learn_rate':0.001,
+'rho':0.9,'max_norm':True,'c':15}
+adagrad_params = {'method':'ADAGRAD','num_epochs':100,'batch_size':128,'learn_rate':1.,'max_norm':False,'c':15.0}
 
 nnet = mln.MultilayerNet(**mln_params)
 nnet.fit(X,y,**rmsprop_params)

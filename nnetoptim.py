@@ -4,46 +4,51 @@ import theano.tensor as T
 import nnetutils as nu
 import copy
 
-def maxnorm_regularization(w,c):
+def maxnorm(w,c):
 	''' clamping function which restricts the weight vector to lie on L2 ball of radius c '''
 	
 	l2n = T.sum(w**2,axis=0)
-	w /= ((l2n > c**2)*T.sqrt(l2n) + (l2n < c**2)*1.)
+	return w*(c/T.sqrt(l2n)*(l2n > c**2) + 1.*(l2n < c**2))
 
-def sgd(params,d_loss_d_params,learn_rate=0.1,max_norm=False,c=5):
+def sgd(params,grad_params,learn_rate=0.1,max_norm=False,c=5):
 	''' Assuming all the data can fit in memory, runs stochastic gradient descent with optional max-norm
 	regularization. This tends to work well with dropout + rectified linear activation functions '''
 	
 	updates = []
-	for param,d_loss_d_param in zip(params,d_loss_d_params):
-		param_ = param - learn_rate*d_loss_d_param
+	for param,grad_param in zip(params,grad_params):
+		param_ = param - learn_rate*grad_param
 		
-		if max_norm:
-			maxnorm_regularization(param_,c)
+		# there's probably a better way to check if this is a weight matrix...
+		if max_norm and param_.get_value().ndim == 2:  
+			param_ = maxnorm(param_,c)
 
 		updates.append((param,param_))
 
 	return updates
 
-def rmsprop(params,d_loss_d_params,learn_rate=0.001,rho=0.9,eps=1e-6):
+def rmsprop(params,grad_params,learn_rate=0.001,rho=0.9,eps=1e-6,max_norm=False,c=3):
 
 	updates = []
 	
-	for param,d_loss_d_param in zip(params,d_loss_d_params):
+	for param,grad_param in zip(params,grad_params):
 
-		# historical gradient
-		hist_d_loss_d_param = theano.shared(nu.floatX(np.zeros(param.get_value().shape))) # initial value
-		hist_d_loss_d_param_ = rho*hist_d_loss_d_param + (1-rho)*d_loss_d_param**2
+		# accumulated gradient
+		acc_grad_param = theano.shared(nu.floatX(np.zeros(param.get_value().shape))) # initial value
+		acc_grad_param_ = rho*acc_grad_param + (1-rho)*grad_param**2
 		
 		# parameter update
-		param_ = param - learn_rate*d_loss_d_param/T.sqrt(hist_d_loss_d_param_ + eps)
+		param_ = param - learn_rate*grad_param/T.sqrt(acc_grad_param_ + eps)
+		
+		# there's probably a better way to check if this is a weight matrix...
+		if max_norm and param.get_value().ndim == 2:
+			param_ = maxnorm(param_,c)
 
-		updates.append((hist_d_loss_d_param,hist_d_loss_d_param_)) # we have to update this too
+		updates.append((acc_grad_param,acc_grad_param_)) # we have to update this too
 		updates.append((param,param_))
 
 	return updates
 
-def adagrad(params,d_loss_d_params,learn_rate=1.,eps=1e-6):
+def adagrad(params,grad_params,learn_rate=1.,eps=1e-6,max_norm=False,c=5):
 	''' adaptive gradient method - typically works better than vanilla SGD and has some 
 	nice theoretical guarantees
 
@@ -53,7 +58,7 @@ def adagrad(params,d_loss_d_params,learn_rate=1.,eps=1e-6):
 	param: params - model parameters
 	type: list of theano shared variables
 
-	param: d_loss_d_params - derivative of the loss with respect to the model parameters
+	param: grad_params - derivative of the loss with respect to the model parameters
 	type: list of theano variables
 
 	param: X_val - validation dataset
@@ -72,16 +77,18 @@ def adagrad(params,d_loss_d_params,learn_rate=1.,eps=1e-6):
 	'''
 		
 	updates = []
-	for param,d_loss_d_param in zip(params,d_loss_d_params):
+	for param,grad_param in zip(params,grad_params):
 		
-		# historical gradient
-		hist_d_loss_d_param = theano.shared(nu.floatX(np.zeros(param.get_value().shape)))
-		hist_d_loss_d_param_ = hist_d_loss_d_param + d_loss_d_param**2
+		# accumulated gradient
+		acc_grad_param = theano.shared(nu.floatX(np.zeros(param.get_value().shape)))
+		acc_grad_param_ = acc_grad_param + grad_param**2
 		
 		# parameter update
-		param_ = param - learn_rate*d_loss_d_param/T.sqrt(hist_d_loss_d_param_ + eps)
+		param_ = param - learn_rate*grad_param/T.sqrt(acc_grad_param_ + eps)
+		if max_norm:
+			param_ = maxnorm(param_,c)
 		
-		updates.append((hist_d_loss_d_param,hist_d_loss_d_param_)) # we have to update this too
+		updates.append((acc_grad_param,acc_grad_param_)) # we have to update this too
 		updates.append((param,param_))
 
 	return updates

@@ -106,6 +106,3 @@ def squared_error(y,y_prob):
 	''' basic squared error loss function with optional regularization'''
 
 	return T.mean(T.sum((y-y_prob)**2))
-
-def max_norm_regularization(wts=None,c=3):
-	
