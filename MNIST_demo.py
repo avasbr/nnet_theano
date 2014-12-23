@@ -7,10 +7,10 @@ import MultilayerNet as mln
 
 print 'Loading data...'
 
-train_img_path = '/home/avasbr/datasets/MNIST/train-images.idx3-ubyte'
-train_lbl_path = '/home/avasbr/datasets/MNIST/train-labels.idx1-ubyte' 
-test_img_path = '/home/avasbr/datasets/MNIST/t10k-images.idx3-ubyte'
-test_lbl_path = '/home/avasbr/datasets/MNIST/t10k-labels.idx1-ubyte'
+train_img_path = '/home/bhargav/datasets/MNIST/train-images.idx3-ubyte'
+train_lbl_path = '/home/bhargav/datasets/MNIST/train-labels.idx1-ubyte' 
+test_img_path = '/home/bhargav/datasets/MNIST/t10k-images.idx3-ubyte'
+test_lbl_path = '/home/bhargav/datasets/MNIST/t10k-labels.idx1-ubyte'
 
 # define training and validation data
 train_img = idx2numpy.convert_from_file(train_img_path)
@@ -39,7 +39,7 @@ for i,idx in enumerate(test_lbl):
 print 'Training...'
 
 # attempting to replicate the deep learning tutorial "modern" net 
-mln_params = {'d':d,'k':k,'n_hid':[625,625],'activ':[nu.reLU,nu.reLU,nu.softmax],'loss_type':'cross_entropy',
+mln_params = {'d':d,'k':k,'num_hid':[625,625],'activ':[nu.reLU,nu.reLU,nu.softmax],'loss_func':nu.cross_entropy,
 'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
 
 # various methods to try - simply change what goes into the fit function
@@ -54,7 +54,7 @@ print 'Performance on test set:'
 print 100*nnet.score(X_te,y_te),'%'
 # print 'Training...'
 
-# mln_params = {'d':d,'k':k,'n_hid':[50],'activ':[nu.sigmoid,nu.softmax],'loss_type':'cross_entropy','dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
+# mln_params = {'d':d,'k':k,'num_hid':[50],'activ':[nu.sigmoid,nu.softmax],'loss_type':'cross_entropy','dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
 # # optim_params = {'method':'SGD','n_iter':1000,'learn_rate':0.1}
 # # optim_params = {'method':'SGD','n_epochs':1000,'batch_size':500,'learn_rate':0.13,'early_stopping':True,'patience':7000}
 # optim_params = {'method':'SGD','n_epochs':100,'batch_size':1000,'learn_rate':0.13}

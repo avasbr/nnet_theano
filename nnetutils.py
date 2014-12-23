@@ -84,3 +84,25 @@ def reroll(v,n_nodes):
 		r_bs.append(np.reshape(v[idx:idx+b_size],(col,))); idx += b_size
 	
 	return r_wts,r_bs
+
+def regularization(wts=None,L1_decay=0.,L2_decay=0.):
+		''' L1 or L2 regularization '''
+		
+		if wts is None:
+			wts = self.wts_
+
+		reg_loss = 0
+		reg_loss += L1_decay*sum([T.sum(T.abs_(w)) for w in wts])
+		reg_loss += L2_decay*sum([T.sum(T.abs_(w)) for w in wts])
+
+		return reg_loss
+
+def cross_entropy(y,y_prob):
+	''' basic cross entropy loss function with optional regularization'''
+	
+	return T.mean(T.sum(-1.0*y*T.log(y_prob),axis=1))
+
+def squared_error(y,y_prob):
+	''' basic squared error loss function with optional regularization'''
+
+	return T.mean(T.sum((y-y_prob)**2))

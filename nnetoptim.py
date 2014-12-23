@@ -28,12 +28,12 @@ def sgd(params,d_loss_d_params,learn_rate=0.1,max_norm=False,c=5):
 def rmsprop(params,d_loss_d_params,learn_rate=0.001,rho=0.9,eps=1e-6):
 
 	updates = []
-	hist_d_loss_d_params = [theano.shared(nu.floatX(np.zeros(param.get_value().shape))) for param in params]
 	
-	for param,d_loss_d_param,hist_d_loss_d_param in zip(params,d_loss_d_params,hist_d_loss_d_params):
+	for param,d_loss_d_param in zip(params,d_loss_d_params):
 
 		# historical gradient
-		hist_d_loss_d_param_ = rho*hist_d_loss_d_param*(1-rho)*d_loss_d_param**2
+		hist_d_loss_d_param = theano.shared(nu.floatX(np.zeros(param.get_value().shape))) # initial value
+		hist_d_loss_d_param_ = rho*hist_d_loss_d_param + (1-rho)*d_loss_d_param**2
 		
 		# parameter update
 		param_ = param - learn_rate*d_loss_d_param/T.sqrt(hist_d_loss_d_param_ + eps)
@@ -70,13 +70,12 @@ def adagrad(params,d_loss_d_params,learn_rate=1.,eps=1e-6):
 	--------
 	wts,bs
 	'''
-	# initialize the historical gradient parameters
-	hist_d_loss_d_params = [theano.shared(nu.floatX(np.zeros(param.get_value().shape))) for param in params]
-	
+		
 	updates = []
-	for param,d_loss_d_param,hist_d_loss_d_param in zip(params,d_loss_d_params,hist_d_loss_d_params):
+	for param,d_loss_d_param in zip(params,d_loss_d_params):
 		
 		# historical gradient
+		hist_d_loss_d_param = theano.shared(nu.floatX(np.zeros(param.get_value().shape)))
 		hist_d_loss_d_param_ = hist_d_loss_d_param + d_loss_d_param**2
 		
 		# parameter update

@@ -10,11 +10,10 @@ import theano.tensor as T
 
 class Network(object):
 
-	def __init__(self,d=None,k=None,n_hid=None,activ=None,loss_func=None,**loss_params):
+	def __init__(self,d=None,k=None,num_hid=None,activ=None,loss_func=None,**loss_params):
 
 		# network parameters
-		self.num_nodes = [d]+n_hid+[k] # number of nodes
-		self.act = (len(self.num_nodes)-1)*[None]
+		self.num_nodes = [d]+num_hid+[k] # number of nodes
 		self.activ = activ
 				
 		if all(node for node in self.num_nodes):
@@ -23,24 +22,26 @@ class Network(object):
 		self.loss_func = loss_func
 		self.loss_params = loss_params
 
-	def set_weights(self,wts=None,bs=None,method='random'):
+	def set_weights(self,wts=None,bs=None,method='gauss'):
 		''' Initializes the weights and biases of the neural network '''
 
 		# weights and biases
 		if wts is None and bs is None:
 			self.wts_ = (len(self.num_nodes)-1)*[None]
 			self.bs_ = (len(self.num_nodes)-1)*[None]
+			# if method == 'tester':
+			# 	for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 			
+			if method == 'gauss':
+				print 'oh hello'
+				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
+					self.wts_[i] = theano.shared(nu.floatX(0.01*np.random.randn(n1,n2)))
+					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
+
 			if method == 'random':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 					v = 1.*np.sqrt(6./(n1+n2+1))
 					self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n1,n2)-v)) 
-					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
-			
-			# fixed weights, mainly for debugging purposes
-			else:
-				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
-					self.wts_[i] = theano.shared(nu.floatX(np.reshape(0.1*np.range(n1*n2),n1,n2)))
 					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
 		else:
 			assert isinstance(wts,list)
@@ -189,11 +190,13 @@ class Network(object):
 			wts = self.wts_
 			bs = self.bs_
 		
-		self.act[0] = self.activ[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
+		act = self.activ[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
 		
 		if len(wts) > 1:
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
-				self.act[i+1] = activ(T.dot(self.act[i],w) + b)
+				act = activ(T.dot(act,w) + b)
+
+		return act
 
 	# compute_loss and compute_grad functions - the former applies forward propagation, and computes the loss
 	# based on the labels. The latter applies autodiff on this loss function and computes the gradients with 
@@ -206,39 +209,13 @@ class Network(object):
 			wts = self.wts_
 			bs = self.bs_
 
-		self.fprop(X,wts,bs)
+		y_prob = self.fprop(X,wts,bs)
 
-		eval_loss = self.loss_func(y) # this is the loss that will be used to evaluate any set
-		optim_loss = self.loss_func(y) + self.regularization(wts) # this is the loss which will be specifically optimized over
+		eval_loss = self.loss_func(y,y_prob) # this is the loss that will be used to evaluate any set
+		optim_loss = self.loss_func(y,y_prob) + nu.regularization(wts) # this is the loss which will be specifically optimized over
 
 		return optim_loss,eval_loss
 
 	# A few basic loss functions that are used often. The autoencoder builds upon this and adds
 	# a sparsity constraint with a few more loss parameters. In general though, one can still 
 	# define custom loss functions and feed those into this base class 
-
-	def regularization(self,wts=None):
-		''' L1 or L2 regularization '''
-		
-		if wts is None:
-			wts = self.wts_
-
-		reg_loss = 0
-
-		if 'L1_decay' in self.loss_params:
-			reg_loss += self.loss_params['L1_decay']*sum([T.sum(T.abs_(w)) for w in wts])
-		
-		if 'L2_decay' in self.loss_params:
-			reg_loss += 0.5*self.loss_params['L2_decay']*sum([T.sum(w**2) for w in wts])
-
-		return reg_loss
-
-	def cross_entropy(self,y):
-		''' basic cross entropy loss function with optional regularization'''
-		# return T.mean(T.nnet.categorical_crossentropy(self.act[-1],y))
-		return T.mean(T.sum(-1.0*y*T.log(self.act[-1]),axis=1))
-
-	def squared_error(self,y):
-		''' basic squared error loss function with optional regularization'''
-
-		return T.mean(T.sum((y-self.act[-1])**2))
