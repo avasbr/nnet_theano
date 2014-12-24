@@ -46,14 +46,13 @@ X_tr,y_tr,X_te,y_te = load_mnist(base_path)
 print 'Training...'
 d = X_tr.shape[1]
 k = y_tr.shape[1]
+
 mln_params = {'d':d,'k':k,'num_hid':[1024,1024],'activ':[nu.reLU,nu.reLU,nu.softmax],'loss_func':nu.cross_entropy,
 'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
 
-# various methods to try - simply change what goes into the fit function
-sgd_params = {'method':'SGD','num_epochs':100,'batch_size':128,'learn_rate':0.5}
+# parameters of the optimization technique - RMSPROP with max-n
 rmsprop_params = {'method':'RMSPROP','num_epochs':100,'batch_size':128,'learn_rate':0.001,
 'rho':0.9,'max_norm':True,'c':15}
-adagrad_params = {'method':'ADAGRAD','num_epochs':100,'batch_size':128,'learn_rate':1.,'max_norm':False,'c':15.0}
 
 nnet = mln.MultilayerNet(**mln_params)
 nnet.fit(X_tr,y_tr,**rmsprop_params)

@@ -27,7 +27,31 @@ def sgd(params,grad_params,learn_rate=0.1,max_norm=False,c=5):
 	return updates
 
 def rmsprop(params,grad_params,learn_rate=0.001,rho=0.9,eps=1e-6,max_norm=False,c=3):
+	''' Geoff hinton's '"RMSprop" algorithm - RPROP for mini-batches
+	Parameters:
+	----------
 
+	param: params - model parameters
+	type: list of theano shared variables
+
+	param: grad_params - derivative of the loss with respect to the model parameters
+	type: list of theano variables
+
+	param: learn_rate - learning rate for rmsprop
+	type: float
+
+	param: rho - momentum term
+
+	param: eps - fudge factor [need ref here]
+	type: float
+
+	param: max_norm - flag to incidate that weights will be L2-norm constrained
+	type: boolean
+
+	param: c - L2-norm constraint for max_norm regularization
+	type: float
+
+	'''
 	updates = []
 	
 	for param,grad_param in zip(params,grad_params):
@@ -43,7 +67,8 @@ def rmsprop(params,grad_params,learn_rate=0.001,rho=0.9,eps=1e-6,max_norm=False,
 		if max_norm and param.get_value().ndim == 2:
 			param_ = maxnorm(param_,c)
 
-		updates.append((acc_grad_param,acc_grad_param_)) # we have to update this too
+		# collected updates of both the parameter and the accumulated gradient
+		updates.append((acc_grad_param,acc_grad_param_))
 		updates.append((param,param_))
 
 	return updates
@@ -61,11 +86,17 @@ def adagrad(params,grad_params,learn_rate=1.,eps=1e-6,max_norm=False,c=5):
 	param: grad_params - derivative of the loss with respect to the model parameters
 	type: list of theano variables
 
-	param: X_val - validation dataset
-	type: theano matrix
+	param: learn_rate - 'master' learning rate for the adagrad algorithm
+	type: float
 
-	param: y_val - validation labels
-	type: theano matrix 
+	param: eps - fudge factor [need ref here]
+	type: float
+
+	param: max_norm - flag to incidate that weights will be L2-norm constrained
+	type: boolean
+
+	param: c - L2-norm constraint for max_norm regularization
+	type: float
 
 	Returns:
 	--------
@@ -85,137 +116,13 @@ def adagrad(params,grad_params,learn_rate=1.,eps=1e-6,max_norm=False,c=5):
 		
 		# parameter update
 		param_ = param - learn_rate*grad_param/T.sqrt(acc_grad_param_ + eps)
-		if max_norm:
+
+		# there's probably a better way to check if this is a weight matrix...
+		if max_norm and param.get_value().ndim == 2:
 			param_ = maxnorm(param_,c)
 		
-		updates.append((acc_grad_param,acc_grad_param_)) # we have to update this too
+		# collected updates of both the parameter and the accumulated gradient
+		updates.append((acc_grad_param,acc_grad_param_))
 		updates.append((param,param_))
 
 	return updates
-
-# Save for later
-#--------
-# def minibatch_gradient_descent_early_stopping(X_tr,y_tr,wts,bs,compute_loss_grad,compute_loss,batch_size=None,
-# 	n_epochs=None,learn_rate=None,early_stopping=False,X_val=None,y_val=None,patience=None,
-# 	patience_increase=2,improvement_threshold=0.995):
-# 	''' Assuming all the data can fit in memory, runs mini-batch gradient descent with optional 
-# 	early stopping (default False). The total number of iterations is controlled by the batch 
-# 	size and the number of epochs.
-
-# 	Parameters:
-# 	----------
-# 	param: wts - weights which need to be optimized
-# 	type: shared theano variable
-
-# 	param: bs - bias weights
-# 	type: shared theano variable
-
-# 	param: X_tr - training dataset
-# 	type: theano matrix
-
-# 	param: y_tr - training labels
-# 	type: theano matrix
-
-# 	param: batch_size - number of examples per mini-batch
-# 	type: int
-
-# 	param: compute_loss_grad - function to compute the loss and gradient at the current point
-# 	type: function
-
-# 	param: compute_loss - only computes the loss at current point
-# 	type: function
-
-# 	param: n_epochs - the number of full runs through the dataset
-# 	type: int
-
-# 	param: early_stopping - simple method to prevent overfitting
-# 	type: boolean
-
-# 	param: X_val - validation dataset
-# 	type: theano matrix
-
-# 	param: y_val - validation labels
-# 	type: theano matrix 
-
-# 	param: patience - number of batches to process before stopping
-# 	type: int
-
-# 	param: patience_increase - multiplicative factor to increase patience threshold
-# 	type: int
-
-# 	param: improvement_threshold - factor of improvement which we deem significant
-# 	type: float
-
-# 	Returns:
-# 	--------
-# 	None
-
-# 	Updates:
-# 	--------
-# 	wts,bs
-
-# 	'''
-# 	m = X_tr.shape[0] # total number of training instances
-# 	print 'Number of training instances:',m
-# 	n_batches = int(m/batch_size) # number of batches, based on batch size
-# 	print 'Number of batches:',n_batches
-# 	leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
-# 	epoch = 0
-# 	done_looping = False
-# 	validation_frequency = min(n_batches,patience/2) # ensures that we validate at least twice before stopping
-	
-# 	x = T.matrix('x') # typed, input variable
-# 	y = T.matrix('y') # type, output variable
-	
-# 	dummy,dW,db = compute_loss_grad(x,y,wts,bs) # the loss and gradients
-# 	loss = compute_loss(x,y,wts,bs)
-
-# 	updates = []
-# 	for w,b,gw,gb in zip(wts,bs,dW,db):
-# 		updates.append((w,w-learn_rate*gw))
-# 		updates.append((b,b-learn_rate*gb))
-
-# 	# compiles the training and validation functions
-# 	train = theano.function(inputs=[x,y],updates=updates) # training function
-# 	validate = theano.function(inputs=[x,y],outputs=loss) # validation functio
-
-# 	best_val_loss = np.inf
-# 	best_wts = None
-# 	best_bs = None
-
-# 	while epoch < n_epochs and not done_looping:
-# 		epoch += 1
-# 		tr_idx = np.random.permutation(m) # randomly shuffle the data indices
-# 		ss_idx = range(0,m,batch_size)
-# 		ss_idx[-1] += leftover # add the leftovers to the last batch
-		
-# 		# run through a full epoch
-# 		for idx,(start_idx,stop_idx) in enumerate(zip(ss_idx[:-1],ss_idx[1:])):
-			
-# 			n_batch_iter = (epoch-1)*n_batches + idx # total number of batches processed up until now
-# 			batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
-# 			train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
-
-# 			# we only worry about validation if early stopping is set to true
-# 			if early_stopping:
-				
-# 				if n_batch_iter % validation_frequency == 0: # time to check performance on validation set
-					
-# 					val_loss = validate(X_val,y_val)
-# 					print 'Batch iteration:',n_batch_iter,' Validation loss:',val_loss,' Patience:',patience
-# 					if val_loss < best_val_loss:
-# 						if val_loss < best_val_loss*improvement_threshold: # this is a significant improvement
-# 							patience = max(patience,n_batch_iter*patience_increase) # increase patience, if possible
-						
-# 						best_val_loss = val_loss
-# 						best_wts = copy.deepcopy(wts)
-# 						best_bs = copy.deepcopy(bs)
-
-# 				if n_batch_iter > patience:
-# 					done_looping = True
-# 					break # break out of the for-loop, and finish early_stopping
-	
-# 	if early_stopping:
-# 		# we want to use these for our model
-# 		wts = best_wts
-# 		bs = best_bs
