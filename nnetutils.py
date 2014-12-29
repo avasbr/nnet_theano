@@ -2,30 +2,6 @@ import theano
 import theano.tensor as T
 import numpy as np
 
-def floatX(X):
-	return np.asarray(X,dtype=theano.config.floatX)
-
-def sigmoid(z):
-	''' sigmoid activation function '''
-	return 1./(1.+T.exp(-1.*z))
-
-def tanh(z):
-	''' hyperbolic tangent activation function '''
-	c = T.exp(z)
-	c_ = T.exp(-1.*z)
-	return (c - c_)/(c + c_)
-
-def softmax(z):
-	''' softmax activation function '''
-	max_v = T.max(z,axis=0,keepdims=True)
-	log_sum = T.log(T.sum(T.exp(z-max_v),axis=0)) + max_v
-	return T.exp(z-log_sum)
-
-def reLU(z):
-	''' rectified linear activation function '''
-	return 0.5*(z + abs(z))
-	# return T.maximum(z,0)
-
 def split_train_val(X,y,p):
 	''' splits into training and validation sets '''
 	
@@ -85,24 +61,5 @@ def reroll(v,n_nodes):
 	
 	return r_wts,r_bs
 
-def regularization(wts=None,L1_decay=0.,L2_decay=0.):
-		''' L1 or L2 regularization '''
-		
-		if wts is None:
-			wts = self.wts_
-
-		reg_loss = 0
-		reg_loss += L1_decay*sum([T.sum(T.abs_(w)) for w in wts])
-		reg_loss += L2_decay*sum([T.sum(T.abs_(w)) for w in wts])
-
-		return reg_loss
-
-def cross_entropy(y,y_prob):
-	''' basic cross entropy loss function with optional regularization'''
-	
-	return T.mean(T.sum(-1.0*y*T.log(y_prob),axis=1))
-
-def squared_error(y,y_prob):
-	''' basic squared error loss function with optional regularization'''
-
-	return T.mean(T.sum((y-y_prob)**2))
+def floatX(X):
+	return np.asarray(X,dtype=theano.config.floatX)

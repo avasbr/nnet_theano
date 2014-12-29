@@ -6,7 +6,7 @@ import sys
 
 class Autoencoder(NeuralNetworkCore.Network):
 
-	def __init__(self,d=None,n_hid=None,activ=None,loss_type='cross_entropy',**loss_params):
+	def __init__(self,d=None,nunm_hid=None,activ=None,loss_func='sparse_cross_entropy',**loss_params):
 		''' simply calls the superclass constructor with the appropriate loss function'''
 		
 		# the autoencoder can only have one hidden layer (and therefore, only two activation functions)
@@ -25,29 +25,6 @@ class Autoencoder(NeuralNetworkCore.Network):
 		self.decode = None
 		self.encode = None
 		self.get_pretrained_weights = None
-
-	def sparsity_loss(self,wts=None,bs=None):
-		
-		sparse_loss = 0
-
-		if 'beta' in self.loss_params and 'rho' in self.loss_params:
-			beta = self.loss_params['beta']
-			rho = self.loss_params['rho']
- 			avg_act = T.mean(self.act[0],axis=0)
-
- 			sparse_loss = beta*T.sum(rho*T.log(rho/avg_act)+(1-rho)*T.log((1-rho)/(1-avg_act)))
-		
-		return sparse_loss
-
-	def sparse_cross_entropy(self,y,wts=None,bs=None):
-		''' cross entropy with a sparsity constraint '''
-
-		return self.cross_entropy(y,wts) + self.sparsity_loss(wts)
-
-	def sparse_squared_error(self,y,wts=None,bs=None):
-		''' squared error with a sparsity constraint '''
-
-		return self.squared_error(y,wts) + self.sparsity_loss(wts)
 
 	def fit(self,X,wts=None,bs=None,X_val=None,y_val=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 

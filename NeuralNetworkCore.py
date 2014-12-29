@@ -4,15 +4,19 @@ import sys
 import time
 import numpy as np
 import nnetutils as nu
+import nnetloss as nl
 import nnetoptim as nopt
 import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 
 class Network(object):
+	''' Core neural network class that forms the basis for all further implementations (e.g. 
+		MultilayerNet, Autoencoder, etc). Contains basic functions for propagating data forward
+		and backwards through the network, as well as fitting the weights to data'''
 
 	def __init__(self,d=None,k=None,num_hid=None,activ=None,dropout_flag=False,input_p=None,
-		hidden_p=None,loss_func=None,**loss_params):
+		hidden_p=None,loss_terms=[None],**loss_params):
 
 		# network parameters
 		self.num_nodes = [d]+num_hid+[k] # number of nodes
@@ -22,7 +26,7 @@ class Network(object):
 			self.set_weights(method='gauss')
 		
 		# loss function and parameters
-		self.loss_func = loss_func
+		self.loss_terms = loss_terms
 		self.loss_params = loss_params
 		
 		# dropout
@@ -34,7 +38,19 @@ class Network(object):
 		self.srng = RandomStreams() # initialize the random number stream
 
 	def set_weights(self,wts=None,bs=None,method='gauss'):
-		''' Initializes the weights and biases of the neural network '''
+		''' Initializes the weights and biases of the neural network 
+		
+		Parameters:
+		-----------
+		param: wts - weights
+		type: np.ndarray, optional
+
+		param: bs - biases
+		type: np.ndarray, optional
+
+		param: method - calls some pre-specified weight initialization routines
+		type: string, optional
+		'''
 
 		# weights and biases
 		if wts is None and bs is None:
@@ -59,8 +75,11 @@ class Network(object):
 			self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
 	def fit(self,X_tr,y_tr,X_val=None,y_val=None,**optim_params):
-		''' The main function which pulls everything together to train the neural network
+		''' The primary function which ingests data and fits to the neural network. Currently
+		only supports mini-batch training.
 
+		Parameters:
+		-----------
 		param: X_tr - training data
 		type: theano matrix
 
@@ -74,7 +93,7 @@ class Network(object):
 		type: theano matrix
 
 		param: **optim_params
-		type: dictionary of optimization 
+		type: dictionary of optimization parameters 
 
 		'''
 		# get the method and relevant 
@@ -82,7 +101,7 @@ class Network(object):
 			err_msg = ('No method provided to fit! Your choices are:'
 						'\n(1) SGD: stochastic gradient descent with optional (improved/nesterov) momentum'+
 						'\n(2) ADAGRAD: ADAptive GRADient learning'+
-						'\n(3) RMSPROP: Hintons mini-batch version of RPROP [NOT IMPLEMENTED]')
+						'\n(3) RMSPROP: Hintons mini-batch version of RPROP')
 
 			return err_msg
 
@@ -95,13 +114,14 @@ class Network(object):
 		batch_size = optim_params.pop('batch_size',None)
 		num_epochs = optim_params.pop('num_epochs',None)
 
-		# get the expressions for computing the training and validation losses, as well as the gradients
+		# get the expressions for computing the training and validation losses, 
+		# as well as the gradients
 
 		X = T.matrix('X') # input variable
 		y = T.matrix('y') # output variable
 		
 		optim_loss, eval_loss = self.compute_loss(X,y,self.wts_,self.bs_) # loss functions
-		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters
+		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters in a list
 		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
 		
 		# define the update rule 
@@ -118,6 +138,7 @@ class Network(object):
 		else:
 			print method_err()
 
+		# compile the training and loss computation functions
 		self.train = theano.function(inputs=[X,y],updates=updates,allow_input_downcast=True,
 			mode='FAST_RUN')
 
@@ -127,14 +148,16 @@ class Network(object):
 		self.compute_eval_loss = theano.function(inputs=[X,y],outputs=eval_loss,allow_input_downcast=True,
 			mode='FAST_RUN')
 
-		# minibatch optimization 
-		self.minibatch_optimize(X_tr,y_tr,batch_size=batch_size,num_epochs=num_epochs)
+		# perform minibatch optimization 
+		self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
 
 		return self
 
-	def minibatch_optimize(self,X_tr,y_tr,batch_size=100,num_epochs=500):
+	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500):
 		''' Mini-batch optimization using update functions 
 
+		Parameters:
+		-----------
 		param: X_tr - training data
 		type: theano matrix
 
@@ -173,19 +196,55 @@ class Network(object):
 				tr_loss = self.compute_eval_loss(X_tr,y_tr)
 				print 'Epoch: %s, Training error: %.3f'%(epoch,tr_loss)
 
-	def dropout(self,act,p=0):
-		''' Randomly drops an activation with probability p '''
+	def dropout(self,act,p=0.5):
+		''' Randomly drops an activation with probability p 
+		
+		Parameters
+		----------
+		param: act - activation values, in a matrix
+		type: theano matrix
+
+		param: p - probability of dropping out a node
+		type: float, optional
+
+		Returns:
+		--------
+		param: [expr] - activation values randomly zeroed out
+		type: theano matrix
+
+		'''
 		if p > 0:
 			# randomly dropout p activations 
 			retain_prob = 1.-p
 			return (1./retain_prob)*act*self.srng.binomial(act.shape,p=retain_prob,dtype=theano.config.floatX)
 
 	def dropout_fprop(self,X,wts=None,bs=None):
-		''' forward propagation with dropout, for training '''
+		''' Performs forward propagation with dropout
+		
+		Parameters:
+		-----------
+		param: X - input data
+		type: theano matrix
+
+		param: wts - weights
+		type: numpy ndarray, optional
+
+		param: bs - bias
+		type: numpy ndarray, optional
+
+		Returns:
+		--------
+		param: final activation values
+		type: theano matrix
+	
+		'''
 		
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
+		else:
+			wts = [theano.shared(floatX(w)) for w in wts]
+			bs = [theano.shared(floatX(b)) for b in bs]
 
 		act = self.activ[0](T.dot(self.dropout(X,self.input_p),wts[0]) + bs[0]) # compute the first activation
 		if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
@@ -195,10 +254,24 @@ class Network(object):
 		return act
 
 	def fprop(self,X,wts=None,bs=None):
-		''' Performs forward propagation through the network, and updates all intermediate values. if
-		input_dropout and hidden_dropout are specified, uses those to randomly omit hidden units - very 
-		powerful technique'''
+		''' Performs forward propagation through the network
 
+		Parameters
+		----------
+		param: X - training data
+		type: theano matrix
+
+		param: wts - weights
+		type: theano matrix
+
+		param: bs - biases
+		type: theano matrix
+
+		Returns:
+		--------
+		param: act - final activation values
+		type: theano matrix
+		'''
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
@@ -212,25 +285,62 @@ class Network(object):
 		return act
 
 	def compute_loss(self,X,y,wts=None,bs=None):
-		''' Given inputs (X,y), returns the loss at the current state of the model (wts,bs) '''
+		''' Given inputs, returns the loss at the current state of the model
+
+		Parameters:
+		-----------
 		
+		param: X - training data
+		type: theano matrix
+
+		param: y - training labels
+		type: theano matrix
+
+		param: wts - weights
+		type: theano matrix, optional
+
+		param: bs - biases
+		type: theano matrix, optional
+
+		Returns:
+		--------
+		param: optim_loss - the optimization loss which must be optimized over
+		type: theano scalar
+
+		param: eval_loss - evaluation loss, which doesn't include regularization
+		type: theano scalar
+
+		'''
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 		
 		if self.dropout_flag:
-			# the optimization loss is based on the output from applying dropout
-			y_prob = self.dropout_fprop(X,wts,bs)
-			optim_loss = self.loss_func(y,y_prob) + nu.regularization(wts)
-
-			# the evaluation loss is based on the expected value of the weights 
-			# y_prob = self.dropout_eval_fprop(X,wts,bs)
-			y_prob = self.fprop(X,wts,bs)
-			eval_loss = self.loss_func(y,y_prob)
-
+			y_optim = self.dropout_fprop(X,wts,bs) # based on the output from applying dropout
 		else:
-			y_prob = self.fprop(X,wts,bs)
-			eval_loss = self.loss_func(y,y_prob) # this is the loss that will be used to evaluate any set
-			optim_loss = self.loss_func(y,y_prob) + nu.regularization(wts) # this is the loss which will be specifically optimized over
+			y_optim = self.fprop(X,wts,bs) # without dropout, there is no 
+
+		y_pred = self.fprop(X,wts,bs)
+
+		optim_loss = None # the loss function which will specifically be optimized over
+		eval_loss = None # the loss function we can evaluate during validation
+
+		if 'cross_entropy' in self.loss_terms:
+			optim_loss = nl.cross_entropy(y,y_optim)
+			eval_loss = nl.cross_entropy(y,y_pred)
+		
+		elif 'squared_loss' in self.loss_terms:
+			optim_loss = nl.squared_loss(y,y_pred)
+			eval_loss = nl.cross_entropy(y,y_pred)
+		
+		else:
+			sys.exit('Must be either cross_entropy or squared_loss')
+
+		if 'regularization' in self.loss_terms:
+			optim_loss += nl.regularization(wts,self.loss_params)
+		
+		if 'sparsity' in self.loss_terms:
+			optim_loss += nl.sparsity(self.hidden_act,self.loss_params) # this mainly applies to autoencoders
+
 
 		return optim_loss,eval_loss

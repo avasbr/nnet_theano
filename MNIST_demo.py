@@ -1,19 +1,19 @@
 import idx2numpy
 import numpy as np
-import nnetutils as nu
+import nnetact as na
 import theano
 import theano.tensor as T
 import MultilayerNet as mln
 
 print 'Loading data...'
-base_path = '/home/avasbr/datasets/MNIST/'
+base_path = '/home/avasbr/datasets/MNIST'
 
 def load_mnist(base_path):
 
-	train_img_path = '%s/train-images.idx3-ubyte'%base_path
-	train_lbl_path = '%s/train-labels.idx1-ubyte'%base_path 
-	test_img_path = '%s/t10k-images.idx3-ubyte'%base_path
-	test_lbl_path = '%s/t10k-labels.idx1-ubyte'%base_path
+	train_img_path = '%s/train-images-idx3-ubyte'%base_path
+	train_lbl_path = '%s/train-labels-idx1-ubyte'%base_path 
+	test_img_path = '%s/t10k-images-idx3-ubyte'%base_path
+	test_lbl_path = '%s/t10k-labels-idx1-ubyte'%base_path
 
 	def encode_one_hot(y,m,k):
 		y_one_hot = np.zeros((m,k))
@@ -47,12 +47,12 @@ print 'Training...'
 d = X_tr.shape[1]
 k = y_tr.shape[1]
 
-mln_params = {'d':d,'k':k,'num_hid':[1024,1024],'activ':[nu.reLU,nu.reLU,nu.softmax],'loss_func':nu.cross_entropy,
-'dropout_flag':True,'input_p':0.2,'hidden_p':0.5}
+mln_params = {'d':d,'k':k,'num_hid':[50],'activ':[na.sigmoid,na.softmax],'loss_terms':['cross_entropy'],
+'dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
 
 # parameters of the optimization technique - RMSPROP with max-n
-rmsprop_params = {'method':'RMSPROP','num_epochs':100,'batch_size':128,'learn_rate':0.001,
-'rho':0.9,'max_norm':True,'c':15}
+rmsprop_params = {'method':'RMSPROP','num_epochs':100,'batch_size':128,'learn_rate':0.13,
+'rho':0.9,'max_norm':False,'c':15}
 
 nnet = mln.MultilayerNet(**mln_params)
 nnet.fit(X_tr,y_tr,**rmsprop_params)
