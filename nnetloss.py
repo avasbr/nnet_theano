@@ -1,7 +1,7 @@
 import theano
 import theano.tensor as T
 
-def regularization(wts,L1_decay=0.,L2_decay=0.):
+def regularization(wts,L1_decay=None,L2_decay=None):
 	''' L1 and/or L2 regularization 
 
 	Parameters:
@@ -23,8 +23,10 @@ def regularization(wts,L1_decay=0.,L2_decay=0.):
 	'''
 
 	reg_loss = 0
-	reg_loss += L1_decay*sum([T.sum(T.abs_(w)) for w in wts])
-	reg_loss += L2_decay*sum([T.sum(T.abs_(w)) for w in wts])
+	if L1_decay is not None:
+		reg_loss += L1_decay*sum([T.sum(T.abs_(w)) for w in wts])
+	if L2_decay is not None:
+		reg_loss += L2_decay*sum([T.sum(T.abs_(w)) for w in wts])
 
 	return reg_loss
 

@@ -6,35 +6,79 @@ import sys
 
 class Autoencoder(NeuralNetworkCore.Network):
 
-	def __init__(self,d=None,nunm_hid=None,activ=None,loss_func='sparse_cross_entropy',**loss_params):
-		''' simply calls the superclass constructor with the appropriate loss function'''
+	def __init__(self,d=None,num_hid=None,activ=None,loss_terms=None,**loss_params):
+		''' implementation of the basic autoencoder '''
 		
 		# the autoencoder can only have one hidden layer (and therefore, only two activation functions)
 		assert isinstance(n_hid,int) and len(activ) == 2 
 
-		if loss_type == 'cross_entropy':
-			NeuralNetworkCore.Network.__init__(self,d=d,k=d,n_hid=[n_hid],activ=activ,loss_func=self.sparse_cross_entropy,**loss_params)
-		
-		elif loss_type == 'squared_error':
-			NeuralNetworkCore.Network.__init__(self,d=d,k=d,n_hid=[n_hid],activ=activ,loss_func=self.sparse_squared_error,**loss_params)
-		
-		else:
-			sys.exit("That loss function is not available")
+		super(Autoencoder,self).__init__(d=d,k=k,num_hid=[num_hid],activ=activ,loss_terms=loss_terms,**loss_params)
 
 		# functions that will be available after running the 'fit' method on the autoencoder
 		self.decode = None
 		self.encode = None
 		self.get_pretrained_weights = None
 
-	def fit(self,X,wts=None,bs=None,X_val=None,y_val=None,**optim_params):
+	def fit(self,X_tr,wts=None,bs=None,X_val=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
-		encoding and decoding functions '''
+		encoding and decoding functions'''
 		
-		super(Autoencoder,self).fit(X,X,wts,bs,**optim_params)
+		super(Autoencoder,self).fit(X_tr,X_tr,X_val=X_val,y_val=X_val,**optim_params)
 		self.compile_autoencoder_functions()		
 
+	def fprop(self,X,wts=None,bs=None):
+		''' Performs forward propagation through the network
+
+		Parameters
+		----------
+		param: X - training data
+		type: theano matrix
+
+		param: wts - weights
+		type: theano matrix
+
+		param: bs - biases
+		type: theano matrix
+
+		Returns:
+		--------
+		param: act - final activation values
+		type: theano matrix
+		'''
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
+
+		# this is useful to keep around, if we introduce sparsity
+		self.hidden_act = self.activ[0](T.dot(X,wts[0]) + bs[0]) 
+		return activ(T.dot(hidden_act,wts[1]) + bs[1])
+
+	def compute_loss(self,X,y,wts=None,bs=None):
+		''' Given inputs, returns the loss at the current state of the model'''
+		
+		# call the super-class function first...		
+		optim_loss, eval_loss = super(Autoencoder,self).compute_loss(X,y,wts,bs)
+
+		# ... and augment with the sparsity term, if it's there
+		if 'sparsity' in self.loss_terms:
+			beta = self.loss_params.get('beta')
+			rho = self.loss_params.get('rho')
+			optim_loss += nl.sparsity(self.hidden_act,beta=beta,rho=rho) 
+
+		# no changes to the eval_loss function
+		return optim_loss,eval_loss
+
 	def compile_autoencoder_functions(self,wts=None,bs=None):
-		''' compiles the encoding, decoding, and pre-training functions of the autoencoder '''
+		''' compiles the encoding, decoding, and pre-training functions of the autoencoder 
+		
+		Parameters
+		----------
+		param: wts - weights
+		type: theano matrix
+
+		param: bs - biases
+		type: theano matrix
+		'''
 		
 		if wts is None and bs is None:
 			wts = self.wts_

@@ -15,8 +15,7 @@ class Network(object):
 		MultilayerNet, Autoencoder, etc). Contains basic functions for propagating data forward
 		and backwards through the network, as well as fitting the weights to data'''
 
-	def __init__(self,d=None,k=None,num_hid=None,activ=None,dropout_flag=False,input_p=None,
-		hidden_p=None,loss_terms=[None],**loss_params):
+	def __init__(self,d=None,k=None,num_hid=None,activ=None,loss_terms=[None],**loss_params):
 
 		# network parameters
 		self.num_nodes = [d]+num_hid+[k] # number of nodes
@@ -29,12 +28,6 @@ class Network(object):
 		self.loss_terms = loss_terms
 		self.loss_params = loss_params
 		
-		# dropout
-		self.dropout_flag = dropout_flag 
-		
-		# add defensive coding here
-		self.input_p = input_p
-		self.hidden_p = hidden_p
 		self.srng = RandomStreams() # initialize the random number stream
 
 	def set_weights(self,wts=None,bs=None,method='gauss'):
@@ -120,7 +113,7 @@ class Network(object):
 		X = T.matrix('X') # input variable
 		y = T.matrix('y') # output variable
 		
-		optim_loss, eval_loss = self.compute_loss(X,y,self.wts_,self.bs_) # loss functions
+		optim_loss, eval_loss = self.compute_loss(X,y) # loss functions
 		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters in a list
 		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
 		
@@ -242,14 +235,14 @@ class Network(object):
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
-		else:
-			wts = [theano.shared(floatX(w)) for w in wts]
-			bs = [theano.shared(floatX(b)) for b in bs]
 
-		act = self.activ[0](T.dot(self.dropout(X,self.input_p),wts[0]) + bs[0]) # compute the first activation
+		input_p = self.loss_params['input_p']
+		hidden_p = self.loss_params['hidden_p']
+		
+		act = self.activ[0](T.dot(self.dropout(X,input_p),wts[0]) + bs[0]) # compute the first activation
 		if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
-				act = activ(T.dot(self.dropout(act,self.hidden_p),w) + b)
+				act = activ(T.dot(self.dropout(act,hidden_p),w) + b)
 
 		return act
 
@@ -275,7 +268,7 @@ class Network(object):
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
-		
+
 		act = self.activ[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
 		
 		if len(wts) > 1:
@@ -289,7 +282,6 @@ class Network(object):
 
 		Parameters:
 		-----------
-		
 		param: X - training data
 		type: theano matrix
 
@@ -315,7 +307,7 @@ class Network(object):
 			wts = self.wts_
 			bs = self.bs_
 		
-		if self.dropout_flag:
+		if self.loss_params['dropout_flag']:
 			y_optim = self.dropout_fprop(X,wts,bs) # based on the output from applying dropout
 		else:
 			y_optim = self.fprop(X,wts,bs) # without dropout, there is no 
@@ -337,10 +329,10 @@ class Network(object):
 			sys.exit('Must be either cross_entropy or squared_loss')
 
 		if 'regularization' in self.loss_terms:
-			optim_loss += nl.regularization(wts,self.loss_params)
-		
-		if 'sparsity' in self.loss_terms:
-			optim_loss += nl.sparsity(self.hidden_act,self.loss_params) # this mainly applies to autoencoders
+			
+			L1_decay = self.loss_params.get('L1_decay')
+			L2_decay = self.loss_params.get('L2_decay')
 
-
+			optim_loss += nl.regularization(wts,L1_decay=L1_decay,L2_decay=L2_decay)
+			
 		return optim_loss,eval_loss
