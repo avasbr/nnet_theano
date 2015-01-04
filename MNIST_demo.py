@@ -48,9 +48,8 @@ d = X_tr.shape[1]
 k = y_tr.shape[1]
 
 mln_params = {'d':d,'k':k,'num_hid':[50],'activ':[na.sigmoid,na.softmax],
-'loss_terms':['cross_entropy'],'L2_decay':0.0001,'dropout_flag':False,'input_p':0.2,'hidden_p':0.5}
+'loss_terms':['cross_entropy','dropout'],'L2_decay':0.0001,'input_p':0.2,'hidden_p':0.5}
 
-# parameters of the optimization technique - RMSPROP with max-n
 rmsprop_params = {'method':'RMSPROP','num_epochs':100,'batch_size':128,'learn_rate':0.01,
 'rho':0.9,'max_norm':False,'c':15}
 

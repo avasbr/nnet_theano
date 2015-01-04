@@ -19,6 +19,13 @@ class Autoencoder(NeuralNetworkCore.Network):
 		self.encode = None
 		self.get_pretrained_weights = None
 
+	def gauss_corrupt_input(X,sigma=0.1):
+		''' adds gaussian noise to the input, making this autoencoder a 'denoising' flavor'''
+
+	def binary_corrupt_input(X,p=0.05):
+		''' similar to the gaussian case, but for binary inputs; this simply flips the values
+		of p*d random dimensions per feature vector''' 
+
 	def fit(self,X_tr,wts=None,bs=None,X_val=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
 		encoding and decoding functions'''
@@ -26,8 +33,9 @@ class Autoencoder(NeuralNetworkCore.Network):
 		super(Autoencoder,self).fit(X_tr,X_tr,X_val=X_val,y_val=X_val,**optim_params)
 		self.compile_autoencoder_functions()		
 
-	def fprop(self,X,wts=None,bs=None):
-		''' Performs forward propagation through the network
+	def fprop(self,X_tr,wts=None,bs=None):
+		''' Performs forward propagation through the network - this fprop is simplified
+		specifically for autoencoders, which have only one hidden layer
 
 		Parameters
 		----------
@@ -50,8 +58,8 @@ class Autoencoder(NeuralNetworkCore.Network):
 			bs = self.bs_
 
 		# this is useful to keep around, if we introduce sparsity
-		self.hidden_act = self.activ[0](T.dot(X,wts[0]) + bs[0]) 
-		return activ(T.dot(hidden_act,wts[1]) + bs[1])
+		self.hidden_act = self.activ[0](T.dot(X_tr,wts[0]) + bs[0]) 
+		return activ[1](T.dot(hidden_act,wts[1]) + bs[1])
 
 	def compute_loss(self,X,y,wts=None,bs=None):
 		''' Given inputs, returns the loss at the current state of the model'''
@@ -59,7 +67,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 		# call the super-class function first...		
 		optim_loss, eval_loss = super(Autoencoder,self).compute_loss(X,y,wts,bs)
 
-		# ... and augment with the sparsity term, if it's there
+		# ... and augment with the sparsity term, if needed
 		if 'sparsity' in self.loss_terms:
 			beta = self.loss_params.get('beta')
 			rho = self.loss_params.get('rho')

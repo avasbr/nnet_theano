@@ -236,6 +236,7 @@ class Network(object):
 			wts = self.wts_
 			bs = self.bs_
 
+		# get the input and hidden layer dropout probabilities
 		input_p = self.loss_params['input_p']
 		hidden_p = self.loss_params['hidden_p']
 		
@@ -307,10 +308,10 @@ class Network(object):
 			wts = self.wts_
 			bs = self.bs_
 		
-		if self.loss_params['dropout_flag']:
+		if 'dropout' in self.loss_terms:
 			y_optim = self.dropout_fprop(X,wts,bs) # based on the output from applying dropout
 		else:
-			y_optim = self.fprop(X,wts,bs) # without dropout, there is no 
+			y_optim = self.fprop(X,wts,bs)
 
 		y_pred = self.fprop(X,wts,bs)
 
