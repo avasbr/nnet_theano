@@ -28,6 +28,7 @@ def sgd(params,grad_params,learn_rate=0.1,max_norm=False,c=5):
 
 def rmsprop(params,grad_params,learn_rate=0.001,rho=0.9,eps=1e-6,max_norm=False,c=3):
 	''' Geoff hinton's '"RMSprop" algorithm - RPROP for mini-batches
+	
 	Parameters:
 	----------
 

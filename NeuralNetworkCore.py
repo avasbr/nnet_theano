@@ -89,23 +89,37 @@ class Network(object):
 		type: dictionary of optimization parameters 
 
 		'''
-		# get the method and relevant 
+		# defensive coding
 		def method_err():
-			err_msg = ('No method provided to fit! Your choices are:'
-						'\n(1) SGD: stochastic gradient descent with optional (improved/nesterov) momentum'+
+			err_msg = ('No (valid) method provided to fit! Your choices are:'
+						'\n(1) SGD: vanilla stochastic gradient descent'+
 						'\n(2) ADAGRAD: ADAptive GRADient learning'+
-						'\n(3) RMSPROP: Hintons mini-batch version of RPROP')
+						'\n(3) RMSPROP: Hintons mini-batch version of RPROP'+
+						'\n(4) L-BFGS-B: limited-memory lbfgs'+
+						'\n(5) CG: conjugate gradient')
+			return err_msg
+		
+		def type_err():
+			err_msg = ('No (valid) type of learning specified! Your choices are:'
+						'\n(1) fb: full-batch learning'+
+						'\n(2) mb: mini-batch learning')
 
 			return err_msg
 
-		# get the method, batch size, and number of epochs
+		# get the method and learning type
 		try:
 			method = optim_params.pop('method')
 		except KeyError:
 			sys.exit(method_err())
 
-		batch_size = optim_params.pop('batch_size',None)
+		try:
+			opt_type = optim_params.pop('opt_type')
+		except KeyError:
+			sys.exit(type_err())
+
+		# perform minibatch or full-batch optimization
 		num_epochs = optim_params.pop('num_epochs',None)
+		batch_size = optim_params.pop('batch_size',None)
 
 		# get the expressions for computing the training and validation losses, 
 		# as well as the gradients
@@ -120,7 +134,7 @@ class Network(object):
 		# define the update rule 
 		updates = []
 		if method == 'SGD':
-			updates = nopt.stochastic_gradient_descent(params,grad_params,**optim_params) # update rule
+			updates = nopt.sgd(params,grad_params,**optim_params) # update rule
 		
 		elif method == 'ADAGRAD':
 			updates = nopt.adagrad(params,grad_params,**optim_params) # update rule
@@ -141,10 +155,33 @@ class Network(object):
 		self.compute_eval_loss = theano.function(inputs=[X,y],outputs=eval_loss,allow_input_downcast=True,
 			mode='FAST_RUN')
 
-		# perform minibatch optimization 
-		self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
-
+		if opt_type == 'mb':	
+			# mini-batch optimization
+			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
+		elif opt_type == 'fb':
+			# full-batch optimization
+			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs)
+		else:
+			# error
+			sys.exit(type_err())
+		
 		return self
+
+	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500):
+		''' Full-batch optimization using update functions 
+
+		Parameters:
+		-----------
+		param: X_tr - training data
+		type: theano matrix
+
+		param: y_tr - training labels
+		type: theano matrix
+
+		param: num_epochs - the number of full runs through the dataset
+		type: int
+		'''
+		pass
 
 	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500):
 		''' Mini-batch optimization using update functions 
@@ -163,7 +200,7 @@ class Network(object):
 		param: num_epochs - the number of full runs through the dataset
 		type: int
 		'''
-	
+
 		# define the mini-batches
 		m = X_tr.shape[0] # total number of training instances
 		n_batches = int(m/batch_size) # number of batches, based on batch size

@@ -1,12 +1,7 @@
 import idx2numpy
 import numpy as np
 import nnetact as na
-import theano
-import theano.tensor as T
 import MultilayerNet as mln
-
-print 'Loading data...'
-base_path = '/home/avasbr/datasets/MNIST'
 
 def load_mnist(base_path):
 
@@ -15,12 +10,11 @@ def load_mnist(base_path):
 	test_img_path = '%s/t10k-images-idx3-ubyte'%base_path
 	test_lbl_path = '%s/t10k-labels-idx1-ubyte'%base_path
 
-	def encode_one_hot(y,m,k):
+	def encode_one_hot(y):
 		y_one_hot = np.zeros((m,k))
-		for i,idx in enumerate(y):
-			y_one_hot[i,idx] = 1
+		y_one_hot[range(m),y] = 1
 		return y_one_hot
-
+	
 	# get the training data
 	train_img = idx2numpy.convert_from_file(train_img_path)
 	m,row,col = train_img.shape
@@ -40,6 +34,9 @@ def load_mnist(base_path):
 
 	return X_tr,y_tr,X_te,y_te
 
+print 'Loading data...'
+base_path = '/home/avasbr/datasets/MNIST'
+
 X_tr,y_tr,X_te,y_te = load_mnist(base_path)
 
 # Train a model with the same learning rate on the training set, test on the testing set:
@@ -50,7 +47,7 @@ k = y_tr.shape[1]
 mln_params = {'d':d,'k':k,'num_hid':[50],'activ':[na.sigmoid,na.softmax],
 'loss_terms':['cross_entropy','dropout'],'L2_decay':0.0001,'input_p':0.2,'hidden_p':0.5}
 
-rmsprop_params = {'method':'RMSPROP','num_epochs':100,'batch_size':128,'learn_rate':0.01,
+rmsprop_params = {'method':'RMSPROP','opt_type':'mb','num_epochs':100,'batch_size':128,'learn_rate':0.01,
 'rho':0.9,'max_norm':False,'c':15}
 
 nnet = mln.MultilayerNet(**mln_params)

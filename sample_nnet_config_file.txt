@@ -1,0 +1,16 @@
+[model]
+type = 'MultilayerNet'
+d = 784
+k = 10
+num_hid = [50,50]
+activ = ['sigmoid','sigmoid','softmax']
+loss_terms = ['cross_entropy','dropout']
+input_p = 0.2
+hidden_p = 0.5
+
+[optim]
+method = 'RMSPROP'
+learn_rate = 0.01
+rho = 0.9
+batch_size = 128
+num_epochs = 100
