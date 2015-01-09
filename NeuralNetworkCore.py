@@ -6,6 +6,7 @@ import numpy as np
 import nnetutils as nu
 import nnetloss as nl
 import nnetoptim as nopt
+import nneterror as ne
 import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -16,6 +17,9 @@ class Network(object):
 		and backwards through the network, as well as fitting the weights to data'''
 
 	def __init__(self,d=None,k=None,num_hid=None,activ=None,loss_terms=[None],**loss_params):
+
+		# defensive checking
+		assert(len(num_hid)+1 == len(activ))
 
 		# network parameters
 		self.num_nodes = [d]+num_hid+[k] # number of nodes
@@ -57,7 +61,7 @@ class Network(object):
 
 			if method == 'random':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
-					v = 1.*np.sqrt(6./(n1+n2+1))
+					v = np.sqrt(1./(n1+n2+1))
 					self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n1,n2)-v)) 
 					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
 		else:
@@ -89,33 +93,17 @@ class Network(object):
 		type: dictionary of optimization parameters 
 
 		'''
-		# defensive coding
-		def method_err():
-			err_msg = ('No (valid) method provided to fit! Your choices are:'
-						'\n(1) SGD: vanilla stochastic gradient descent'+
-						'\n(2) ADAGRAD: ADAptive GRADient learning'+
-						'\n(3) RMSPROP: Hintons mini-batch version of RPROP'+
-						'\n(4) L-BFGS-B: limited-memory lbfgs'+
-						'\n(5) CG: conjugate gradient')
-			return err_msg
-		
-		def type_err():
-			err_msg = ('No (valid) type of learning specified! Your choices are:'
-						'\n(1) fb: full-batch learning'+
-						'\n(2) mb: mini-batch learning')
-
-			return err_msg
 
 		# get the method and learning type
 		try:
 			method = optim_params.pop('method')
 		except KeyError:
-			sys.exit(method_err())
+			sys.exit(ne.method_err())
 
 		try:
 			opt_type = optim_params.pop('opt_type')
 		except KeyError:
-			sys.exit(type_err())
+			sys.exit(ne.type_err())
 
 		# perform minibatch or full-batch optimization
 		num_epochs = optim_params.pop('num_epochs',None)
@@ -155,10 +143,10 @@ class Network(object):
 		self.compute_eval_loss = theano.function(inputs=[X,y],outputs=eval_loss,allow_input_downcast=True,
 			mode='FAST_RUN')
 
-		if opt_type == 'mb':	
+		if opt_type == 'minibatch':	
 			# mini-batch optimization
 			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
-		elif opt_type == 'fb':
+		elif opt_type == 'fullbatch':
 			# full-batch optimization
 			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs)
 		else:

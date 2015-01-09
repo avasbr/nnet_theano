@@ -36,22 +36,24 @@ def load_mnist(base_path):
 
 print 'Loading data...'
 base_path = '/home/avasbr/datasets/MNIST'
-
+config_file = ''
 X_tr,y_tr,X_te,y_te = load_mnist(base_path)
 
 # Train a model with the same learning rate on the training set, test on the testing set:
-print 'Training...'
-d = X_tr.shape[1]
-k = y_tr.shape[1]
+# print 'Training...'
+# d = X_tr.shape[1]
+# k = y_tr.shape[1]
 
-mln_params = {'d':d,'k':k,'num_hid':[50],'activ':[na.sigmoid,na.softmax],
-'loss_terms':['cross_entropy','dropout'],'L2_decay':0.0001,'input_p':0.2,'hidden_p':0.5}
+# mln_params = {'d':d,'k':k,'num_hid':[50],'activ':[na.sigmoid,na.softmax],
+# 'loss_terms':['cross_entropy','dropout'],'L2_decay':0.0001,'input_p':0.2,'hidden_p':0.5}
 
-rmsprop_params = {'method':'RMSPROP','opt_type':'mb','num_epochs':100,'batch_size':128,'learn_rate':0.01,
-'rho':0.9,'max_norm':False,'c':15}
+# rmsprop_params = {'method':'RMSPROP','opt_type':'minibatch','num_epochs':100,'batch_size':128,'learn_rate':0.01,
+# 'rho':0.9,'max_norm':False,'c':15}
 
-nnet = mln.MultilayerNet(**mln_params)
-nnet.fit(X_tr,y_tr,**rmsprop_params)
+# nnet = mln.MultilayerNet(**mln_params)
+# nnet.fit(X_tr,y_tr,**rmsprop_params)
+
+nnet = train_nnet(X_tr,y_tr,config_file) # Initialize the neural network and train it
 
 print 'Performance on test set:'
 print 100*nnet.score(X_te,y_te),'%'
