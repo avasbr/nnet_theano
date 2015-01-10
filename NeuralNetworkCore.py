@@ -19,21 +19,22 @@ class Network(object):
 
 	def __init__(self,d=None,k=None,num_hids=None,activs=None,loss_terms=[None],**loss_params):
 
-		# defensive checking
-		assert(len(num_hids)+1 == len(activ))
+		# Number of units in the output layer determined by k, so not explicitly specified in 
+		# num_hids. however, still need to 
+		assert(len(num_hids)+1 == len(activs))
 
 		# network parameters
 		self.num_nodes = [d]+num_hids+[k] # number of nodes
 		
 		self.activs = [None]*len(activs)
-		for activ in activs:
-			if a == 'sigmoid':
+		for idx,activ in enumerate(activs):
+			if activ == 'sigmoid':
 				self.activs[idx] = na.sigmoid
-			elif a == 'tanh':
+			elif activ == 'tanh':
 				self.activs[idx] = na.tanh
-			elif a == 'reLU':
+			elif activ == 'reLU':
 				self.activs[idx] = na.reLU
-			elif a == 'softmax':
+			elif activ == 'softmax':
 				self.activs[idx] = na.softmax
 			else:
 				sys.exit(ne.activ_err())

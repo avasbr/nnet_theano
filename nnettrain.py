@@ -4,6 +4,7 @@ import Autoencoder as ae
 import nnetact as na
 import nneterror as ne
 import sys
+import ast
 from ConfigParser import SafeConfigParser, ConfigParser
 
 def train_nnet(X_tr,y_tr,config_file,X_val=None,y_val=None):
@@ -16,7 +17,7 @@ def train_nnet(X_tr,y_tr,config_file,X_val=None,y_val=None):
 	# get the model type, model parameters and optimization parameters
 	model = cfg_parser.get('model_type','arch')
 	model_params = dict(cfg_parser.items('model_params'))
-	optim_params = dict(cfg_parser.items('optim_params'))	
+	optim_params = dict(cfg_parser.items('optim_params'))
 
 	# start constructing the neural network model
 	nnet = None
@@ -37,10 +38,11 @@ def train_nnet(X_tr,y_tr,config_file,X_val=None,y_val=None):
 
 	# now parse the optimization methods
 	for key,value in optim_params.iteritems():
-		optim_params[key] = ast.literal_eval(value)
+		if not key == 'method' and not key == 'opt_type':
+			optim_params[key] = ast.literal_eval(value)
 
 	# train the neural network
-	nnet.fit(X_tr,y_ter,X_val=X_val,y_val=y_val,**optim_params)
+	nnet.fit(X_tr,y_tr,X_val=X_val,y_val=y_val,**optim_params)
 
 	return nnet
 
