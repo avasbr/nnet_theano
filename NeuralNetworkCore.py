@@ -5,6 +5,7 @@ import time
 import numpy as np
 import nnetutils as nu
 import nnetloss as nl
+import nnetact as na
 import nnetoptim as nopt
 import nneterror as ne
 import theano
@@ -16,14 +17,26 @@ class Network(object):
 		MultilayerNet, Autoencoder, etc). Contains basic functions for propagating data forward
 		and backwards through the network, as well as fitting the weights to data'''
 
-	def __init__(self,d=None,k=None,num_hid=None,activ=None,loss_terms=[None],**loss_params):
+	def __init__(self,d=None,k=None,num_hids=None,activs=None,loss_terms=[None],**loss_params):
 
 		# defensive checking
-		assert(len(num_hid)+1 == len(activ))
+		assert(len(num_hids)+1 == len(activ))
 
 		# network parameters
-		self.num_nodes = [d]+num_hid+[k] # number of nodes
-		self.activ = activ
+		self.num_nodes = [d]+num_hids+[k] # number of nodes
+		
+		self.activs = [None]*len(activs)
+		for activ in activs:
+			if a == 'sigmoid':
+				self.activs[idx] = na.sigmoid
+			elif a == 'tanh':
+				self.activs[idx] = na.tanh
+			elif a == 'reLU':
+				self.activs[idx] = na.reLU
+			elif a == 'softmax':
+				self.activs[idx] = na.softmax
+			else:
+				sys.exit(ne.activ_err())
 				
 		if all(node for node in self.num_nodes):
 			self.set_weights(method='gauss')
@@ -265,9 +278,9 @@ class Network(object):
 		input_p = self.loss_params['input_p']
 		hidden_p = self.loss_params['hidden_p']
 		
-		act = self.activ[0](T.dot(self.dropout(X,input_p),wts[0]) + bs[0]) # compute the first activation
+		act = self.activs[0](T.dot(self.dropout(X,input_p),wts[0]) + bs[0]) # compute the first activation
 		if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
-			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
+			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activs[1:])):
 				act = activ(T.dot(self.dropout(act,hidden_p),w) + b)
 
 		return act
@@ -295,10 +308,10 @@ class Network(object):
 			wts = self.wts_
 			bs = self.bs_
 
-		act = self.activ[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
+		act = self.activs[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
 		
 		if len(wts) > 1:
-			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activ[1:])):
+			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activs[1:])):
 				act = activ(T.dot(act,w) + b)
 
 		return act

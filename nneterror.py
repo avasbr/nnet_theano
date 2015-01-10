@@ -1,10 +1,8 @@
-
 def model_error():
 	err_msg = ('Not a valid neural network type! Your choices are:'
 		'\n(1) MultilayerNet'
 		'\n(2) Autoencoder'
 		'\n(3) StackedAutoencoder')
-
 	return err_msg
 
 def method_err():
@@ -25,5 +23,18 @@ def opt_type_err():
 def opt_type_opt_method_mismatch(opt_type,opt_method):
 	return '%s cannot be applied to %s learning'%(opt_method,opt_type)
 
-def config_err():
-	pass
+def activ_err():
+	err_msg = ('Invalid activation provided! Your choices are:'
+				'\n(1) sigmoid'
+				'\n(2) tanh'
+				'\n(3) reLU'
+				'\n(4) softmax')
+	return err_msg
+
+def config_req_err(item):
+	return '%s is a required item, please check config file and include it'%item
+
+def value_err(param,v):
+	return '%s is not a valid value for %s; must be an integer'%(v,param)
+
+

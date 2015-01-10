@@ -9,10 +9,10 @@ import sys
 class MultilayerNet(NeuralNetworkCore.Network):
 	''' The classic, multilayer neural network, with prediciton and scoring functions '''
 
-	def __init__(self,d=None,k=None,num_hid=None,activ=None,loss_terms=None,**loss_params):
+	def __init__(self,d=None,k=None,num_hids=None,activs=None,loss_terms=None,**loss_params):
 		''' simply calls the superclass constructor with the appropriate loss function'''
 		
-		super(MultilayerNet,self).__init__(d=d,k=k,num_hid=num_hid,activ=activ,loss_terms=loss_terms,**loss_params)
+		super(MultilayerNet,self).__init__(d=d,k=k,num_hids=num_hids,activs=activs,loss_terms=loss_terms,**loss_params)
 		
 		# functions which will be compiled after 'fit' has been run
 		self.predict = None

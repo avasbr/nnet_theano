@@ -6,13 +6,13 @@ import sys
 
 class Autoencoder(NeuralNetworkCore.Network):
 
-	def __init__(self,d=None,num_hid=None,activ=None,loss_terms=None,**loss_params):
+	def __init__(self,d=None,num_hid=None,activs=None,loss_terms=None,**loss_params):
 		''' implementation of the basic autoencoder '''
 		
 		# the autoencoder can only have one hidden layer (and therefore, only two activation functions)
-		assert isinstance(n_hid,int) and len(activ) == 2 
+		assert isinstance(n_hid,int) and len(activs) == 2 
 
-		super(Autoencoder,self).__init__(d=d,k=k,num_hid=[num_hid],activ=activ,loss_terms=loss_terms,**loss_params)
+		super(Autoencoder,self).__init__(d=d,k=k,num_hids=[num_hid],activs=activs,loss_terms=loss_terms,**loss_params)
 
 		# functions that will be available after running the 'fit' method on the autoencoder
 		self.decode = None
@@ -23,8 +23,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 		''' adds gaussian noise to the input, making this autoencoder a 'denoising' flavor'''
 
 	def binary_corrupt_input(X,p=0.05):
-		''' similar to the gaussian case, but for binary inputs; this simply flips the values
-		of p*d random dimensions per feature vector''' 
+		''' this simply flips the values of p*d random dimensions per feature vector''' 
 
 	def fit(self,X_tr,wts=None,bs=None,X_val=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 

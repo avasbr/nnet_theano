@@ -1,16 +1,16 @@
 import idx2numpy
 import numpy as np
-import nnetact as na
+import nnettrain as nt
 import MultilayerNet as mln
 
 def load_mnist(base_path):
 
-	train_img_path = '%s/train-images-idx3-ubyte'%base_path
-	train_lbl_path = '%s/train-labels-idx1-ubyte'%base_path 
-	test_img_path = '%s/t10k-images-idx3-ubyte'%base_path
-	test_lbl_path = '%s/t10k-labels-idx1-ubyte'%base_path
+	train_img_path = '%s/train-images.idx3-ubyte'%base_path
+	train_lbl_path = '%s/train-labels.idx1-ubyte'%base_path 
+	test_img_path = '%s/t10k-images.idx3-ubyte'%base_path
+	test_lbl_path = '%s/t10k-labels.idx1-ubyte'%base_path
 
-	def encode_one_hot(y):
+	def encode_one_hot(y,m,k):
 		y_one_hot = np.zeros((m,k))
 		y_one_hot[range(m),y] = 1
 		return y_one_hot
@@ -35,8 +35,8 @@ def load_mnist(base_path):
 	return X_tr,y_tr,X_te,y_te
 
 print 'Loading data...'
-base_path = '/home/avasbr/datasets/MNIST'
-config_file = ''
+base_path = '/home/bhargav/datasets/MNIST'
+config_file = '/home/bhargav/Desktop/nnet_theano/sample_nnet_config_file.ini'
 X_tr,y_tr,X_te,y_te = load_mnist(base_path)
 
 # Train a model with the same learning rate on the training set, test on the testing set:
@@ -44,7 +44,7 @@ X_tr,y_tr,X_te,y_te = load_mnist(base_path)
 # d = X_tr.shape[1]
 # k = y_tr.shape[1]
 
-# mln_params = {'d':d,'k':k,'num_hid':[50],'activ':[na.sigmoid,na.softmax],
+# mln_params = {'d':d,'k':k,'num_hid':[50],'activ':['sigmoid','softmax'],
 # 'loss_terms':['cross_entropy','dropout'],'L2_decay':0.0001,'input_p':0.2,'hidden_p':0.5}
 
 # rmsprop_params = {'method':'RMSPROP','opt_type':'minibatch','num_epochs':100,'batch_size':128,'learn_rate':0.01,
@@ -53,7 +53,7 @@ X_tr,y_tr,X_te,y_te = load_mnist(base_path)
 # nnet = mln.MultilayerNet(**mln_params)
 # nnet.fit(X_tr,y_tr,**rmsprop_params)
 
-nnet = train_nnet(X_tr,y_tr,config_file) # Initialize the neural network and train it
+nnet = nt.train_nnet(X_tr,y_tr,config_file) # Initialize the neural network and train it
 
 print 'Performance on test set:'
 print 100*nnet.score(X_te,y_te),'%'
