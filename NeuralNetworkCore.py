@@ -38,10 +38,7 @@ class Network(object):
 				self.activs[idx] = na.softmax
 			else:
 				sys.exit(ne.activ_err())
-				
-		if all(node for node in self.num_nodes):
-			self.set_weights(method='gauss')
-		
+
 		# loss function and parameters
 		self.loss_terms = loss_terms
 		self.loss_params = loss_params
@@ -107,6 +104,9 @@ class Network(object):
 		type: dictionary of optimization parameters 
 
 		'''
+		# initialize all the weights
+		if all(node for node in self.num_nodes):
+			self.set_weights(method='gauss')
 
 		# get the method and learning type
 		try:
