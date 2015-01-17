@@ -21,6 +21,8 @@ if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
 else:
     print 'Used the gpu'
 
+# Results:
+
 # $ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python check1.py
 # [Elemwise{exp,no_inplace}(<TensorType(float32, vector)>)]
 # Looping 1000 times took 3.06635117531 seconds

@@ -54,7 +54,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 				if method == 'random':
 					v = np.sqrt(1./(d+num_hids[0]+1))
 					self.wts_[0] = theano.shared(nu.floatX(2.0*v*np.random.rand(d,num_hids[0]-v)))
-					self.wts_[1] = self.wts_]0].T
+					self.wts_[1] = self.wts_[0].T
 					self.bs_[0] = theano.shared(nu.floatX(np.zeros(num_hids[0])))
 					self.bs_[1] = theano.shared(nu.floatX(np.zeros(d)))
 
@@ -77,7 +77,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 		type: string
 		'''
 		if method == 'mask':
-			return X*self.srng.binomial(X.shape,n=1,p=1-v,dtype=theano.config.floatX))
+			return X*self.srng.binomial(X.shape,n=1,p=1-v,dtype=theano.config.floatX)
 		elif method == 'gauss':
 			return X*self.srng.normal(X.shape,avg=0.0,std=v,dtype=theano.config.floatX)
 		# TODO: will probably want to add support for "salt-and-pepper" (essentially an XOR)
