@@ -42,21 +42,27 @@ class Autoencoder(NeuralNetworkCore.Network):
 			
 			# weights and biases
 			if wts is None and bs is None:
-				self.wts_ = [None,None]
-				self.bs_ = [None,None]
+				wts = [None,None]
+				bs = [None,None]
 
 				if method == 'gauss':
-					self.wts_[0] = theano.shared(nu.floatX(0.01*np.random.randn(d,num_hids[0])))
-					self.wts_[1] = self.wts_[0].T # this is a shallow transpose (changing [0] will change this as well)
-					self.bs_[0] = theano.shared(nu.floatX(np.zeros(num_hids[0])))
-					self.bs_[1] = theano.shared(nu.floatX(np.zeros(d)))
+					wts[0] = 0.01*np.random.randn(d,num_hids[0])
+					wts[1] = wts[0].T # this is a shallow transpose (changing [0] will change this as well)
+					bs[0] = np.zeros(num_hids[0])
+					bs[1] = np.zeros(d)
 
 				if method == 'random':
 					v = np.sqrt(1./(d+num_hids[0]+1))
-					self.wts_[0] = theano.shared(nu.floatX(2.0*v*np.random.rand(d,num_hids[0]-v)))
-					self.wts_[1] = self.wts_[0].T
-					self.bs_[0] = theano.shared(nu.floatX(np.zeros(num_hids[0])))
-					self.bs_[1] = theano.shared(nu.floatX(np.zeros(d)))
+					wts[0] = 2.0*v*np.random.rand(d,num_hids[0]-v)
+					wts[1] = wts[0].T
+					bs[0] = np.zeros(num_hids[0])
+					bs[1] = np.zeros(d)
+			else:
+				assert isinstance(wts,list)
+				assert isinstance(bs,list)
+
+		self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
+		self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
 
 		# if encoding and decoding matrices are distinct, just default back to the normal case
 		else:
@@ -80,9 +86,11 @@ class Autoencoder(NeuralNetworkCore.Network):
 			return X*self.srng.binomial(X.shape,n=1,p=1-v,dtype=theano.config.floatX)
 		elif method == 'gauss':
 			return X*self.srng.normal(X.shape,avg=0.0,std=v,dtype=theano.config.floatX)
+
 		# TODO: will probably want to add support for "salt-and-pepper" (essentially an XOR)
 		# noise. See the theano notes for the implementation, though to use bitwise ops, everything
-		# needs to be an int...
+		# needs to be an int - in general, this is less often used, so we'll throw this on the 
+		# back-burner
 
 	def fit(self,X_tr,wts=None,bs=None,X_val=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 

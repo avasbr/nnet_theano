@@ -2,14 +2,15 @@ import idx2numpy
 import numpy as np
 import nnettrain as nt
 import MultilayerNet as mln
+import argparse
 
-def load_mnist(base_path):
+def load_mnist(data_path):
 	''' Loads the MNIST data from the base path '''
 
-	train_img_path = '%s/train-images.idx3-ubyte'%base_path
-	train_lbl_path = '%s/train-labels.idx1-ubyte'%base_path 
-	test_img_path = '%s/t10k-images.idx3-ubyte'%base_path
-	test_lbl_path = '%s/t10k-labels.idx1-ubyte'%base_path
+	train_img_path = '%s/train-images.idx3-ubyte'%data_path
+	train_lbl_path = '%s/train-labels.idx1-ubyte'%data_path 
+	test_img_path = '%s/t10k-images.idx3-ubyte'%data_path
+	test_lbl_path = '%s/t10k-labels.idx1-ubyte'%data_path
 
 	def encode_one_hot(y,m,k):
 		y_one_hot = np.zeros((m,k))
@@ -35,16 +36,15 @@ def load_mnist(base_path):
 
 	return X_tr,y_tr,X_te,y_te
 
-def train_nnet_mnist(base_path=None,config_file=None):
+def train_nnet_mnist():
 	''' Trains a neural network on the MNIST data '''
 
 	print 'Loading data...'
 	
-	# assume a default 
-	if base_path is None:
-		base_path = '/home/g64892/datasets/MNIST'
+	# default paths
+	data_path = '/home/g64892/datasets/MNIST'
 	config_file = '/home/g64892/Desktop/nnet_theano/MNIST_config.ini'
-	X_tr,y_tr,X_te,y_te = load_mnist(base_path)
+	X_tr,y_tr,X_te,y_te = load_mnist(data_path)
 
 	# Train a model with the same learning rate on the training set, test on the testing set:
 	print 'Training...'
@@ -63,14 +63,13 @@ def train_nnet_mnist(base_path=None,config_file=None):
 	print 'Performance on test set:'
 	print 100*nnet.score(X_te,y_te),'%'
 
-def main(argv):
-	if len(argv) 
-	base_path = argv[1] # directory path that contains all the MNIST data
+def main(argv): 
+	data_path = argv[1] # directory path that contains all the MNIST data
 	config_file = argv[2] # config file which holds all the parameters
 	
 	# load data
 	print 'Loading data...'
-	X_tr,y_tr,X_te,y_te = load_mnist(base_path)
+	X_tr,y_tr,X_te,y_te = load_mnist(data_path)
 	
 	# train a neural network
 	print 'Training...'

@@ -62,25 +62,25 @@ class Network(object):
 
 		# weights and biases
 		if wts is None and bs is None:
-			self.wts_ = (len(self.num_nodes)-1)*[None]
-			self.bs_ = (len(self.num_nodes)-1)*[None]
+			wts = (len(self.num_nodes)-1)*[None]
+			bs = (len(self.num_nodes)-1)*[None]
 			
 			if method == 'gauss':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
-					self.wts_[i] = theano.shared(nu.floatX(0.01*np.random.randn(n1,n2)))
-					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
+					wts[i] = 0.01*np.random.randn(n1,n2)
+					bs[i] = np.zeros(n2)
 
 			if method == 'random':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 					v = np.sqrt(1./(n1+n2+1))
-					self.wts_[i] = theano.shared(nu.floatX(2.0*v*np.random.rand(n1,n2)-v)) 
-					self.bs_[i] = theano.shared(nu.floatX(np.zeros(n2)))
+					wts[i] = 2.0*v*np.random.rand(n1,n2)-v 
+					bs[i] = np.zeros(n2)
 		else:
 			assert isinstance(wts,list)
 			assert isinstance(bs,list)
 			
-			self.wts_ = [theano.shared(nu.floatX(w)) for w in wts]
-			self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
+		self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
+		self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
 
 	def fit(self,X_tr,y_tr,X_val=None,y_val=None,**optim_params):
 		''' The primary function which ingests data and fits to the neural network. Currently
