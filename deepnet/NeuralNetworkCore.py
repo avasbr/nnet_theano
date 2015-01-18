@@ -3,11 +3,11 @@ import os
 import sys
 import time
 import numpy as np
-import nnetutils as nu
-import nnetloss as nl
-import nnetact as na
-import nnetoptim as nopt
-import nneterror as ne
+from deepnet.common import nnetutils as nu
+from deepnet.common import nnetloss as nl
+from deepnet.common import nnetact as na
+from deepnet.common import nnetoptim as nopt
+from deepnet.common import nneterror as ne
 import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -20,12 +20,14 @@ class Network(object):
 	def __init__(self,d=None,k=None,num_hids=None,activs=None,loss_terms=[None],**loss_params):
 
 		# Number of units in the output layer determined by k, so not explicitly specified in 
-		# num_hids. however, still need to 
+		# num_hids. still need to check that there's one less hidden unit sizes specified than
+		# number of activation functions
 		assert(len(num_hids)+1 == len(activs))
 
-		# network parameters
-		self.num_nodes = [d]+num_hids+[k] # number of nodes
-		
+		# number of nodes
+		self.num_nodes = [d]+num_hids+[k]
+
+		# define activation functions		
 		self.activs = [None]*len(activs)
 		for idx,activ in enumerate(activs):
 			if activ == 'sigmoid':
@@ -43,9 +45,10 @@ class Network(object):
 		self.loss_terms = loss_terms
 		self.loss_params = loss_params
 		
-		self.srng = RandomStreams() # initialize the random number stream
+		# initialize the random number stream
+		self.srng = RandomStreams() 
 
-	def set_weights(self,wts=None,bs=None,method='gauss'):
+	def set_weights(self,wts=None,bs=None,init_method='gauss',scale_factor=0.001):
 		''' Initializes the weights and biases of the neural network 
 		
 		Parameters:
@@ -59,20 +62,19 @@ class Network(object):
 		param: method - calls some pre-specified weight initialization routines
 		type: string, optional
 		'''
-
 		# weights and biases
 		if wts is None and bs is None:
 			wts = (len(self.num_nodes)-1)*[None]
 			bs = (len(self.num_nodes)-1)*[None]
 			
-			if method == 'gauss':
+			if init_method == 'gauss':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
-					wts[i] = 0.01*np.random.randn(n1,n2)
+					wts[i] = scale_factor*np.random.randn(n1,n2)
 					bs[i] = np.zeros(n2)
 
-			if method == 'random':
+			if init_method == 'fan-io':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
-					v = np.sqrt(1./(n1+n2+1))
+					v = np.sqrt(scale_factor*1./(n1+n2+1))
 					wts[i] = 2.0*v*np.random.rand(n1,n2)-v 
 					bs[i] = np.zeros(n2)
 		else:
@@ -106,16 +108,18 @@ class Network(object):
 		'''
 		# initialize all the weights
 		if all(node for node in self.num_nodes):
-			self.set_weights(method='gauss')
+			init_method = optim_params.pop('init_method')
+			scale_factor = optim_params.pop('scale_factor')
+			self.set_weights(init_method=init_method,scale_factor=scale_factor)
 
 		# get the method and learning type
 		try:
-			method = optim_params.pop('method')
+			optim_method = optim_params.pop('optim_method')
 		except KeyError:
 			sys.exit(ne.method_err())
 
 		try:
-			opt_type = optim_params.pop('opt_type')
+			optim_type = optim_params.pop('optim_type')
 		except KeyError:
 			sys.exit(ne.type_err())
 
@@ -135,13 +139,13 @@ class Network(object):
 		
 		# define the update rule 
 		updates = []
-		if method == 'SGD':
+		if optim_method == 'SGD':
 			updates = nopt.sgd(params,grad_params,**optim_params) # update rule
 		
-		elif method == 'ADAGRAD':
+		elif optim_method == 'ADAGRAD':
 			updates = nopt.adagrad(params,grad_params,**optim_params) # update rule
 		
-		elif method == 'RMSPROP':
+		elif optim_method == 'RMSPROP':
 			updates = nopt.rmsprop(params,grad_params,**optim_params)
 		
 		else:
@@ -157,10 +161,10 @@ class Network(object):
 		self.compute_eval_loss = theano.function(inputs=[X,y],outputs=eval_loss,allow_input_downcast=True,
 			mode='FAST_RUN')
 
-		if opt_type == 'minibatch':	
+		if optim_type == 'minibatch':	
 			# mini-batch optimization
 			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
-		elif opt_type == 'fullbatch':
+		elif optim_type == 'fullbatch':
 			# full-batch optimization
 			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs)
 		else:

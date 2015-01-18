@@ -1,7 +1,7 @@
-import MultilayerNet as mln
-import nnetact as na
+from deepnet import MultilayerNet as mln
+from deepnet.common import nnetact as na
+from deepnet.common import nnetutils as nu
 import numpy as np
-import nnetutils as nu
 
 # this dataset isn't changing, so just hard-code these values
 m = 1000

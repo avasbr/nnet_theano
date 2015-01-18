@@ -1,8 +1,8 @@
-import NeuralNetworkCore
-import MultilayerNet as mln
-import Autoencoder as ae
-import nnetact as na
-import nneterror as ne
+from deepnet import NeuralNetworkCore
+from deepnet import MultilayerNet as mln
+from deepnet import Autoencoder as ae
+from deepnet.common import nnetact as na
+from deepnet.common import nneterror as ne
 import sys
 import ast
 from ConfigParser import SafeConfigParser, ConfigParser
@@ -38,7 +38,7 @@ def train_nnet(X_tr,y_tr,config_file,X_val=None,y_val=None):
 
 	# now parse the optimization methods
 	for key,value in optim_params.iteritems():
-		if not key == 'method' and not key == 'opt_type':
+		if not (key == 'init_method' or key == 'optim_method' or key == 'optim_type'):
 			optim_params[key] = ast.literal_eval(value)
 
 	# train the neural network

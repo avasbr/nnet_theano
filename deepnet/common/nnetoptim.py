@@ -1,7 +1,7 @@
 import numpy as np
 import theano
 import theano.tensor as T
-import nnetutils as nu
+from deepnet.common import nnetutils as nu
 import copy
 
 def maxnorm(w,c):

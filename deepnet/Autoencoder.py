@@ -1,5 +1,5 @@
 import numpy as np
-import NeuralNetworkCore
+from deepnet import NeuralNetworkCore
 import theano
 import theano.tensor as T
 import sys

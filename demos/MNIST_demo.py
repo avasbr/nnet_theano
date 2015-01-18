@@ -1,7 +1,7 @@
 import idx2numpy
 import numpy as np
-import nnettrain as nt
-import MultilayerNet as mln
+from deepnet.common import nnettrain as nt
+from deepnet import MultilayerNet as mln
 import argparse
 import sys
 
@@ -55,7 +55,8 @@ def train_nnet_mnist():
 	mln_params = {'d':d,'k':k,'num_hid':[50],'activ':['sigmoid','softmax'],
 	'loss_terms':['cross_entropy','dropout'],'L2_decay':0.0001,'input_p':0.2,'hidden_p':0.5}
 
-	rmsprop_params = {'method':'RMSPROP','opt_type':'minibatch','num_epochs':100,'batch_size':128,'learn_rate':0.01,
+	rmsprop_params = {'init_method':'gauss','scale_factor':0.001,'optim_method':'RMSPROP',
+	'opt_type':'minibatch','num_epochs':100,'batch_size':128,'learn_rate':0.01,
 	'rho':0.9,'max_norm':False,'c':15}
 
 	nnet = mln.MultilayerNet(**mln_params)

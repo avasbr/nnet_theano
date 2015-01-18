@@ -1,9 +1,9 @@
 import numpy as np
-import NeuralNetworkCore
+from deepnet import NeuralNetworkCore
 import theano.tensor as T
 import theano
-import Autoencoder as ae
-import nnetutils as nu
+from deepnet import Autoencoder as ae
+from deepnet.common import nnetutils as nu
 import sys
 
 class MultilayerNet(NeuralNetworkCore.Network):
