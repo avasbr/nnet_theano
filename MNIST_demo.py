@@ -3,6 +3,7 @@ import numpy as np
 import nnettrain as nt
 import MultilayerNet as mln
 import argparse
+import sys
 
 def load_mnist(data_path):
 	''' Loads the MNIST data from the base path '''
@@ -80,4 +81,4 @@ def main(argv):
 	print 100*nnet.score(X_te,y_te),'%'
 
 if __name__ == '__main__':
-	main()
+	main(sys.argv)

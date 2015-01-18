@@ -61,8 +61,8 @@ class Autoencoder(NeuralNetworkCore.Network):
 				assert isinstance(wts,list)
 				assert isinstance(bs,list)
 
-		self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
-		self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
+			self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
+			self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
 
 		# if encoding and decoding matrices are distinct, just default back to the normal case
 		else:
