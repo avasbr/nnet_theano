@@ -161,17 +161,25 @@ class Network(object):
 		self.compute_eval_loss = theano.function(inputs=[X,y],outputs=eval_loss,allow_input_downcast=True,
 			mode='FAST_RUN')
 
+
+
 		if optim_type == 'minibatch':	
 			# mini-batch optimization
-			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
+			self.minibatch_optimize(X_tr,y_tr,updates,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
 		elif optim_type == 'fullbatch':
 			# full-batch optimization
-			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs)
+			self.fullbatch_optimize(X_tr,y_tr,upfates, X_val=X_val,y_val=y_val,num_epochs=num_epochs)
 		else:
 			# error
 			sys.exit(type_err())
 		
 		return self
+
+	def shared_dataset(self,X,y):
+		''' As per the deep learning tutorial in theano, loading the data all at once (if possible)
+		into the GPU will significantly speed things up '''
+
+		return theano.shared(nu.floatX(X)),theano.shared(nu.floatX(y))
 
 	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500):
 		''' Full-batch optimization using update functions 

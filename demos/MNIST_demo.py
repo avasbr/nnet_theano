@@ -2,7 +2,7 @@ import idx2numpy
 import numpy as np
 from deepnet.common import nnettrain as nt
 from deepnet import MultilayerNet as mln
-import argparse
+import theano
 import sys
 
 def load_mnist(data_path):

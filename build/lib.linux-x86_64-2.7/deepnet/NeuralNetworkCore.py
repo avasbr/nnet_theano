@@ -173,6 +173,12 @@ class Network(object):
 		
 		return self
 
+	def shared_dataset(self,X,y):
+		''' As per the deep learning tutorial in theano, loading the data all at once (if possible)
+		into the GPU will significantly speed things up '''
+
+		return theano.shared(nu.floatX(X)),theano.shared(nu.floatX(y))
+
 	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500):
 		''' Full-batch optimization using update functions 
 
@@ -212,6 +218,8 @@ class Network(object):
 		n_batches = int(m/batch_size) # number of batches, based on batch size
 		leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
 		epoch = 0
+
+		X_tr,y_tr = self.shared_dataset(X_tr,y_tr)
 
 		# iterate through the training examples
 		while epoch < num_epochs:
