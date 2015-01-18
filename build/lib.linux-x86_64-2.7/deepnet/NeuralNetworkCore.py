@@ -151,22 +151,12 @@ class Network(object):
 		else:
 			print method_err()
 
-		# compile the training and loss computation functions
-		self.train = theano.function(inputs=[X,y],updates=updates,allow_input_downcast=True,
-			mode='FAST_RUN')
-
-		self.compute_optim_loss = theano.function(inputs=[X,y],outputs=optim_loss,allow_input_downcast=True,
-			mode='FAST_RUN')
-
-		self.compute_eval_loss = theano.function(inputs=[X,y],outputs=eval_loss,allow_input_downcast=True,
-			mode='FAST_RUN')
-
 		if optim_type == 'minibatch':	
 			# mini-batch optimization
-			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
+			self.minibatch_optimize(X_tr,y_tr,updates,eval_loss,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
 		elif optim_type == 'fullbatch':
 			# full-batch optimization
-			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs)
+			self.fullbatch_optimize(X_tr,y_tr,updates, X_val=X_val,y_val=y_val,num_epochs=num_epochs)
 		else:
 			# error
 			sys.exit(type_err())
@@ -174,7 +164,7 @@ class Network(object):
 		return self
 
 	def shared_dataset(self,X,y):
-		''' As per the deep learning tutorial in theano, loading the data all at once (if possible)
+		''' As per the deep learning tutorial, loading the data all at once (if possible)
 		into the GPU will significantly speed things up '''
 
 		return theano.shared(nu.floatX(X)),theano.shared(nu.floatX(y))
@@ -195,7 +185,7 @@ class Network(object):
 		'''
 		pass
 
-	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500):
+	def minibatch_optimize(self,X_tr,y_tr,optim_loss,eval_loss,updates,X_val=None,y_val=None,batch_size=100,num_epochs=500):
 		''' Mini-batch optimization using update functions 
 
 		Parameters:
@@ -205,6 +195,8 @@ class Network(object):
 
 		param: y_tr - training labels
 		type: theano matrix
+
+		param: updates - update per rule for each 
 
 		param: batch_size - number of examples per mini-batch
 		type: int
@@ -219,7 +211,46 @@ class Network(object):
 		leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
 		epoch = 0
 
+		# load the full dataset into a shared variable
 		X_tr,y_tr = self.shared_dataset(X_tr,y_tr)
+
+		idx = T.vector('idx')
+
+		# training function
+		self.train = theano.function(
+			inputs=[idx],
+			updates=updates,
+			allow_input_downcast=True,
+			mode='FAST_RUN',
+			givens={
+				X: X_tr[idx],
+				y: y_tr[idx]
+			})
+
+		# training loss
+		self.compute_train_loss = theano.function(
+			inputs=[],
+			outputs=eval_loss,
+			allow_input_downcast=True,
+			mode='FAST_RUN',
+			givens={
+				X: X_tr,
+				y: y_tr
+			})
+
+		# if validation data is provided, validation loss
+		self.compute_val_loss = None
+		if X_val is not None and y_val is not None:
+			X_val,y_val = self.shared_dataset(X_val,y_val)
+			self.compute_val_loss = theano.function(
+				inputs=[],
+				outputs=eval_loss,
+				allow_input_downcast=True,
+				mode='FAST_RUN',
+				givens={
+					X: X_val,
+					y: y_val
+				})
 
 		# iterate through the training examples
 		while epoch < num_epochs:
@@ -234,7 +265,8 @@ class Network(object):
 				n_batch_iter = (epoch-1)*n_batches + idx # total number of batches processed up until now
 				batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
 				
-				self.train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
+				# self.train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
+				self.train(batch_idx)
 				
 			if epoch%10 == 0:
 				tr_loss = self.compute_eval_loss(X_tr,y_tr)
@@ -375,7 +407,7 @@ class Network(object):
 		
 		elif 'squared_loss' in self.loss_terms:
 			optim_loss = nl.squared_loss(y,y_pred)
-			eval_loss = nl.cross_entropy(y,y_pred)
+			eval_loss = nl.squared_loss(y,y_pred)
 		
 		else:
 			sys.exit('Must be either cross_entropy or squared_loss')
