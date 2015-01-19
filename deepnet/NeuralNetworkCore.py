@@ -112,12 +112,6 @@ class Network(object):
 			scale_factor = optim_params.pop('scale_factor')
 			self.set_weights(init_method=init_method,scale_factor=scale_factor)
 
-		# get the method and learning type
-		try:
-			optim_method = optim_params.pop('optim_method')
-		except KeyError:
-			sys.exit(ne.method_err())
-
 		try:
 			optim_type = optim_params.pop('optim_type')
 		except KeyError:
@@ -129,34 +123,13 @@ class Network(object):
 
 		# get the expressions for computing the training and validation losses, 
 		# as well as the gradients
-
-		X = T.matrix('X') # input variable
-		y = T.matrix('y') # output variable
 		
-		optim_loss, eval_loss = self.compute_loss(X,y) # loss functions
-		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters in a list
-		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
-		
-		# define the update rule 
-		updates = []
-		if optim_method == 'SGD':
-			updates = nopt.sgd(params,grad_params,**optim_params) # update rule
-		
-		elif optim_method == 'ADAGRAD':
-			updates = nopt.adagrad(params,grad_params,**optim_params) # update rule
-		
-		elif optim_method == 'RMSPROP':
-			updates = nopt.rmsprop(params,grad_params,**optim_params)
-		
-		else:
-			print method_err()
-
 		if optim_type == 'minibatch':	
 			# mini-batch optimization
-			self.minibatch_optimize(X_tr,y_tr,updates,eval_loss,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs)
+			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs,**optim_params)
 		elif optim_type == 'fullbatch':
 			# full-batch optimization
-			self.fullbatch_optimize(X_tr,y_tr,updates, X_val=X_val,y_val=y_val,num_epochs=num_epochs)
+			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs)
 		else:
 			# error
 			sys.exit(type_err())
@@ -185,7 +158,7 @@ class Network(object):
 		'''
 		pass
 
-	def minibatch_optimize(self,X_tr,y_tr,optim_loss,eval_loss,updates,X_val=None,y_val=None,batch_size=100,num_epochs=500):
+	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500,**optim_params):
 		''' Mini-batch optimization using update functions 
 
 		Parameters:
@@ -204,6 +177,33 @@ class Network(object):
 		param: num_epochs - the number of full runs through the dataset
 		type: int
 		'''
+		X = T.matrix('X') # input variable
+		y = T.matrix('y') # output variable
+		idx = T.ivector('idx') # integer index
+		
+		optim_loss, eval_loss = self.compute_loss(X,y) # loss functions
+		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters in a list
+		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
+		
+		# get the method and learning type
+		try:
+			optim_method = optim_params.pop('optim_method')
+		except KeyError:
+			sys.exit(ne.method_err())
+
+		# define the update rule 
+		updates = []
+		if optim_method == 'SGD':
+			updates = nopt.sgd(params,grad_params,**optim_params) # update rule
+		
+		elif optim_method == 'ADAGRAD':
+			updates = nopt.adagrad(params,grad_params,**optim_params) # update rule
+		
+		elif optim_method == 'RMSPROP':
+			updates = nopt.rmsprop(params,grad_params,**optim_params)
+		
+		else:
+			print method_err()
 
 		# define the mini-batches
 		m = X_tr.shape[0] # total number of training instances
@@ -213,9 +213,7 @@ class Network(object):
 
 		# load the full dataset into a shared variable
 		X_tr,y_tr = self.shared_dataset(X_tr,y_tr)
-
-		idx = T.vector('idx')
-
+		
 		# training function
 		self.train = theano.function(
 			inputs=[idx],
@@ -223,8 +221,8 @@ class Network(object):
 			allow_input_downcast=True,
 			mode='FAST_RUN',
 			givens={
-				X: X_tr[idx],
-				y: y_tr[idx]
+				X:X_tr[idx],
+				y:y_tr[idx]
 			})
 
 		# training loss
@@ -269,7 +267,7 @@ class Network(object):
 				self.train(batch_idx)
 				
 			if epoch%10 == 0:
-				tr_loss = self.compute_eval_loss(X_tr,y_tr)
+				tr_loss = self.compute_train_loss()
 				print 'Epoch: %s, Training error: %.3f'%(epoch,tr_loss)
 
 	def dropout(self,act,p=0.5):
