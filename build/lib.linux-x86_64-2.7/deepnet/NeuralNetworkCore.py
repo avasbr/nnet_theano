@@ -46,9 +46,10 @@ class Network(object):
 		self.loss_params = loss_params
 		
 		# initialize the random number stream
-		self.srng = RandomStreams() 
+		self.srng = RandomStreams()
+		self.srng.seed(1234) 
 
-	def set_weights(self,wts=None,bs=None,init_method='gauss',scale_factor=0.001):
+	def set_weights(self,wts=None,bs=None,init_method='gauss',scale_factor=0.001,seed=None):
 		''' Initializes the weights and biases of the neural network 
 		
 		Parameters:
@@ -59,9 +60,14 @@ class Network(object):
 		param: bs - biases
 		type: np.ndarray, optional
 
-		param: method - calls some pre-specified weight initialization routines
+		param: init_method - calls some pre-specified weight initialization routines
 		type: string, optional
+
+		param: scale_factor - for gauss, corresponds to the standard deviation
 		'''
+		if seed is not None:
+			np.random.seed(seed=seed)
+
 		# weights and biases
 		if wts is None and bs is None:
 			wts = (len(self.num_nodes)-1)*[None]
@@ -70,6 +76,7 @@ class Network(object):
 			if init_method == 'gauss':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 					wts[i] = scale_factor*np.random.randn(n1,n2)
+					print wts[i][:3,:3]
 					bs[i] = np.zeros(n2)
 
 			if init_method == 'fan-io':
@@ -110,7 +117,8 @@ class Network(object):
 		if all(node for node in self.num_nodes):
 			init_method = optim_params.pop('init_method')
 			scale_factor = optim_params.pop('scale_factor')
-			self.set_weights(init_method=init_method,scale_factor=scale_factor)
+			seed = optim_params.pop('seed')
+			self.set_weights(init_method=init_method,scale_factor=scale_factor,seed=seed)
 
 		try:
 			optim_type = optim_params.pop('optim_type')
@@ -254,6 +262,7 @@ class Network(object):
 		while epoch < num_epochs:
 			epoch += 1
 			tr_idx = np.random.permutation(m) # randomly shuffle the data indices
+			print tr_idx[:5]
 			ss_idx = range(0,m,batch_size)
 			ss_idx[-1] += leftover # add the leftovers to the last batch
 			
@@ -268,7 +277,7 @@ class Network(object):
 				
 			if epoch%10 == 0:
 				tr_loss = self.compute_train_loss()
-				print 'Epoch: %s, Training error: %.3f'%(epoch,tr_loss)
+				print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss)
 
 	def dropout(self,act,p=0.5):
 		''' Randomly drops an activation with probability p 
