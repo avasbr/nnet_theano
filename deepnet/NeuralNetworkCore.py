@@ -76,7 +76,6 @@ class Network(object):
 			if init_method == 'gauss':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 					wts[i] = scale_factor*np.random.randn(n1,n2)
-					print wts[i][:3,:3]
 					bs[i] = np.zeros(n2)
 
 			if init_method == 'fan-io':
@@ -190,6 +189,7 @@ class Network(object):
 		idx = T.ivector('idx') # integer index
 		
 		optim_loss, eval_loss = self.compute_loss(X,y) # loss functions
+		
 		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters in a list
 		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
 		
@@ -222,6 +222,16 @@ class Network(object):
 		# load the full dataset into a shared variable
 		X_tr,y_tr = self.shared_dataset(X_tr,y_tr)
 		
+		# for debugging purposes
+		y_pred = self.fprop(X)
+		self.pred_fcn = theano.function(inputs=[],
+			outputs=y_pred[:5,:],
+			allow_input_downcast=True,
+			mode='FAST_RUN',
+			givens={
+				X:X_tr
+			})
+
 		# training function
 		self.train = theano.function(
 			inputs=[idx],
@@ -262,7 +272,6 @@ class Network(object):
 		while epoch < num_epochs:
 			epoch += 1
 			tr_idx = np.random.permutation(m) # randomly shuffle the data indices
-			print tr_idx[:5]
 			ss_idx = range(0,m,batch_size)
 			ss_idx[-1] += leftover # add the leftovers to the last batch
 			
@@ -277,6 +286,7 @@ class Network(object):
 				
 			if epoch%10 == 0:
 				tr_loss = self.compute_train_loss()
+
 				print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss)
 
 	def dropout(self,act,p=0.5):
@@ -334,6 +344,9 @@ class Network(object):
 		if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activs[1:])):
 				act = activ(T.dot(self.dropout(act,hidden_p),w) + b)
+		
+		act = T.switch(act<0.00001,0.00001,act)
+		act = T.switch(act>0.99999,0.99999,act)
 
 		return act
 
@@ -361,11 +374,13 @@ class Network(object):
 			bs = self.bs_
 
 		act = self.activs[0](T.dot(X,wts[0]) + bs[0]) # use the first data matrix to compute the first activation
-		self.compute_act = theano.function(inputs=[X],output=act,allow_input_downcast=True)
-		print self.compute_act(X)
 		if len(wts) > 1:
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activs[1:])):
 				act = activ(T.dot(act,w) + b)
+		
+		# critical for numericaly stability
+		act = T.switch(act<0.00001,0.00001,act)
+		act = T.switch(act>0.99999,0.99999,act)
 
 		return act
 

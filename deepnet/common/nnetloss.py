@@ -47,8 +47,9 @@ def cross_entropy(y,y_pred):
 	type: theano scalar
 
 	'''
-	
-	return T.mean(T.sum(-1.0*y*T.log(y_pred),axis=1))
+	# not sure if this is more numerically stable or what...
+	return T.mean(T.nnet.categorical_crossentropy(y_pred,y))
+	#return T.mean(T.sum(-1.0*y*T.log(y_pred),axis=1))
 
 def squared_error(y,y_pred):
 	''' basic squared error loss function

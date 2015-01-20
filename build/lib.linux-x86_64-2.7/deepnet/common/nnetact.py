@@ -11,9 +11,9 @@ def tanh(z):
 	return (c - c_)/(c + c_)
 
 def softmax(z):
-	''' softmax activation function '''
-	max_v = T.max(z,axis=0,keepdims=True)
-	log_sum = T.log(T.sum(T.exp(z-max_v),axis=0)) + max_v
+	''' softmax activation function '''	
+	max_v = T.max(z,axis=1).dimshuffle(0,'x')
+	log_sum = T.log(T.sum(T.exp(z-max_v),axis=1)).dimshuffle(0,'x') + max_v
 	return T.exp(z-log_sum)
 
 def reLU(z):
