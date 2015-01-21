@@ -6,6 +6,8 @@ import scipy.io
 import matplotlib.pyplot as plt
 from deepnet import Autoencoder as ae
 from deepnet.common import nnetutils as nu
+from deepnet.common import nnettrain as nt
+import sys
 
 def sample_images(I,w=8,h=8,n=10000):
 	'''Extracts n patches (flattened) of size w x h from one of the images in I
@@ -37,7 +39,7 @@ def sample_images(I,w=8,h=8,n=10000):
 	for i,(r,c) in enumerate(zip(r_idx,c_idx)):
 		X[i,:] = I[r:r+w,c:c+h,np.random.randint(idx)].flatten()
 
-	X -= np.mean(X,axis=1) # zero-mean
+	X -= np.mean(X,axis=1)[:,np.newaxis] # zero-mean
 	
 	# truncate values to +/- 3 standard deviations and scale to [-1,1]
 	pstd = 3*np.std(X)
@@ -86,7 +88,7 @@ def show_reconstruction(X,X_r,idx,w=8,h=8):
 
 def main(argv): 
 	data_path = argv[1] # directory path that contains the image data
-	n = argv[2]
+	n = int(argv[2])
 	config_file = argv[3] # config file which holds all the parameters
 	
 	# load data
@@ -96,7 +98,7 @@ def main(argv):
 	
 	# train a neural network
 	print 'Training...'
-	sae = nt.train_nnet(X,config_file)
+	sae = nt.train_nnet(config_file,X_tr=X)
 
 	# visualize it
 	X_max = sae.compute_max_activations()

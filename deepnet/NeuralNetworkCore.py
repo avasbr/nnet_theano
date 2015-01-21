@@ -378,7 +378,7 @@ class Network(object):
 			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activs[1:])):
 				act = activ(T.dot(act,w) + b)
 		
-		# critical for numericaly stability
+		# for numericaly stability
 		act = T.switch(act<0.00001,0.00001,act)
 		act = T.switch(act>0.99999,0.99999,act)
 

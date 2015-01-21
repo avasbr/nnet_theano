@@ -6,13 +6,13 @@ import sys
 
 class Autoencoder(NeuralNetworkCore.Network):
 
-	def __init__(self,d=None,num_hid=None,activs=None,tied_wts=False,loss_terms=None,**loss_params):
+	def __init__(self,d=None,num_hids=None,activs=None,tied_wts=False,loss_terms=None,**loss_params):
 		''' implementation of the basic autoencoder '''
 		
 		# the autoencoder can only have one hidden layer (and therefore, only two activation functions)
-		assert isinstance(n_hid,int) and len(activs) == 2 
+		assert len(num_hids) == 1 and len(activs) == 2 
 
-		super(Autoencoder,self).__init__(d=d,k=k,num_hids=[num_hid],activs=activs,loss_terms=loss_terms,**loss_params)
+		super(Autoencoder,self).__init__(d=d,k=d,num_hids=num_hids,activs=activs,loss_terms=loss_terms,**loss_params)
 
 		# functions that will be available after running the 'fit' method on the autoencoder
 		self.decode = None

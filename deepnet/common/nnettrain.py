@@ -7,7 +7,7 @@ import sys
 import ast
 from ConfigParser import SafeConfigParser, ConfigParser
 
-def train_nnet(X_tr,y_tr,config_file,X_val=None,y_val=None):
+def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None):
 	''' parses a config file to initialize a neural network '''
 
 	# define the parser
@@ -25,24 +25,25 @@ def train_nnet(X_tr,y_tr,config_file,X_val=None,y_val=None):
 	# infer the types of all the parameters
 	for key,value in model_params.iteritems():
 		model_params[key] = ast.literal_eval(value)
-	
-	# construct the model based on the specified architecture
-	if model == 'MultilayerNet':
-		nnet = mln.MultilayerNet(**model_params)
-	elif model == 'Autoencoder':
-		pass
-	elif model == 'StackedDenoisingAutoencoder':
-		pass
-	else:
-		sys.exit(ne.model_error())
 
 	# now parse the optimization methods
 	for key,value in optim_params.iteritems():
 		if not (key == 'init_method' or key == 'optim_method' or key == 'optim_type'):
 			optim_params[key] = ast.literal_eval(value)
+	
+	# construct the model based on the specified architecture
+	if model == 'MultilayerNet':
+		nnet = mln.MultilayerNet(**model_params)
+		nnet.fit(X_tr,y_tr,X_val=X_val,y_val=y_val,**optim_params)
+	elif model == 'Autoencoder':
+		nnet = ae.Autoencoder(**model_params)
+		nnet.fit(X_tr,**optim_params)
+	elif model == 'StackedDenoisingAutoencoder':
+		pass
+	else:
+		sys.exit(ne.model_error())
 
 	# train the neural network
-	nnet.fit(X_tr,y_tr,X_val=X_val,y_val=y_val,**optim_params)
 
 	return nnet
 
