@@ -49,31 +49,31 @@ def sample_images(I,w=8,h=8,n=10000):
 	X = 0.4*(X+1)+0.1
 	return X
 
-def load_images(mat_file):
+def load_images(data_path):
 	'''Loads the images from the mat file
 	
 	Parameters:
 	-----------
-	mat_file:	MATLAB file from Andrew Ng's sparse AE exercise
-				.mat file
+	param: data_path - directory for IMAGES.mat
+	type: string 
+
 	Returns
 	--------
 	I:	image set
 		r x c x i numpy array, r = rows, c = columns, i = # of images
 
 	'''
-	mat = scipy.io.loadmat(mat_file)
+	mat = scipy.io.loadmat('%s/IMAGES.mat'%data_path)
 	return mat['IMAGES']
 
 def visualize_image_bases(X_max,n_hid,w=8,h=8):
 	plt.figure()
 	for i in range(n_hid):
 		plt.subplot(5,5,i)
-		curr_img = X_max[:,i].reshape(w,h)
+		curr_img = X_max[i,:].reshape(w,h)
 		plt.imshow(curr_img,cmap='gray',interpolation='none')
 
 def show_reconstruction(X,X_r,idx,w=8,h=8):
-	
 	''' Plots a single patch before and after reconstruction '''
 	
 	plt.figure()

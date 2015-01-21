@@ -1,5 +1,6 @@
 import numpy as np
 from deepnet import NeuralNetworkCore
+from deepnet.common import nnetloss as nl
 import theano
 import theano.tensor as T
 import sys
@@ -17,7 +18,6 @@ class Autoencoder(NeuralNetworkCore.Network):
 		# functions that will be available after running the 'fit' method on the autoencoder
 		self.decode = None
 		self.encode = None
-		self.get_pretrained_weights = None
 		self.tied_wts = tied_wts
 
 	def set_weights(self,wts=None,bs=None,init_method='gauss',scale_factor=None,seed=None):
@@ -54,8 +54,8 @@ class Autoencoder(NeuralNetworkCore.Network):
 					bs[0] = np.zeros(num_hids[0])
 					bs[1] = np.zeros(d)
 
-				if method == 'random':
-					v = np.sqrt(1./(d+num_hids[0]+1))
+				if method == 'fan-io':
+					v = np.sqrt(1.*scale_factor/(d+num_hids[0]+1))
 					wts[0] = scale_factor*v*np.random.rand(d,num_hids[0]-v)
 					wts[1] = wts[0].T
 					bs[0] = np.zeros(num_hids[0])
@@ -163,6 +163,14 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		X = T.matrix() # features to encode or decode
 
-		self.encode = theano.function(inputs=[X],outputs=self.activs[0](T.dot(X,wts[0])+bs[0]))
-		self.decode = theano.function(inputs=[X],outputs=self.activs[1](T.dot(X,wts[1])+bs[1]))
-		# self.get_pretrained_weights = theano.function(inputs=[X],outputs=[wts[0].get_value(),bs[0].get_value()])
+		self.encode = theano.function(inputs=[X],outputs=self.activs[0](T.dot(X,wts[0])+bs[0]),
+			allow_input_downcast=True)
+		self.decode = theano.function(inputs=[X],outputs=self.activs[1](T.dot(X,wts[1])+bs[1]),
+			allow_input_downcast=True)
+		self.compute_max_activations = theano.function(inputs=[],
+			outputs=wts[0].T/T.sqrt(T.sum(wts[0]**2,axis=0)).dimshuffle(0,'x'),
+			allow_input_downcast=True)
+
+	def get_encoding_weights(self):
+		''' get the encoding weights from the shared variable '''
+		return self.wts_[0].get_value()
