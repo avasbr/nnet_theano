@@ -68,7 +68,7 @@ def squared_error(y,y_pred):
 	type: theano scalar
 	'''
 
-	return T.mean(T.sum((y-y_pred)**2))
+	return T.mean(T.sum((y-y_pred)**2,axis=1))
 
 def sparsity(act,beta=None,rho=None):
 	''' Sparsity term used to enforce sparsity in the activations of hidden units for

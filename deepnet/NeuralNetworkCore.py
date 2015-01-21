@@ -428,12 +428,12 @@ class Network(object):
 			optim_loss = nl.cross_entropy(y,y_optim)
 			eval_loss = nl.cross_entropy(y,y_pred)
 		
-		elif 'squared_loss' in self.loss_terms:
-			optim_loss = nl.squared_loss(y,y_pred)
-			eval_loss = nl.squared_loss(y,y_pred)
+		elif 'squared_error' in self.loss_terms:
+			optim_loss = nl.squared_error(y,y_pred)
+			eval_loss = nl.squared_error(y,y_pred)
 		
 		else:
-			sys.exit('Must be either cross_entropy or squared_loss')
+			sys.exit('Must be either cross_entropy or squared_error')
 
 		if 'regularization' in self.loss_terms:
 			

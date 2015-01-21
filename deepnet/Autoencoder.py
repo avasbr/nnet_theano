@@ -20,7 +20,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 		self.get_pretrained_weights = None
 		self.tied_wts = tied_wts
 
-	def set_weights(self,wts=None,bs=None,init_method='gauss',scale_factor=None):
+	def set_weights(self,wts=None,bs=None,init_method='gauss',scale_factor=None,seed=None):
 		''' Initializes the weights and biases of the neural network 
 		
 		Parameters:
@@ -39,21 +39,24 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		if self.tied_wts:
 			self.num_nodes = [d]+num_hids
-			
+
+			if seed is not None:
+				np.random.seed(seed=seed)
+
 			# weights and biases
 			if wts is None and bs is None:
 				wts = [None,None]
 				bs = [None,None]
 
 				if method == 'gauss':
-					wts[0] = 0.01*np.random.randn(d,num_hids[0])
+					wts[0] = scale_factor*np.random.randn(d,num_hids[0])
 					wts[1] = wts[0].T # this is a shallow transpose (changing [0] will change this as well)
 					bs[0] = np.zeros(num_hids[0])
 					bs[1] = np.zeros(d)
 
 				if method == 'random':
 					v = np.sqrt(1./(d+num_hids[0]+1))
-					wts[0] = 2.0*v*np.random.rand(d,num_hids[0]-v)
+					wts[0] = scale_factor*v*np.random.rand(d,num_hids[0]-v)
 					wts[1] = wts[0].T
 					bs[0] = np.zeros(num_hids[0])
 					bs[1] = np.zeros(d)
@@ -66,7 +69,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		# if encoding and decoding matrices are distinct, just default back to the normal case
 		else:
-			super(Autoencoder,self).set_weights(wts,bs,method)
+			super(Autoencoder,self).set_weights(init_method=init_method,scale_factor=scale_factor,seed=seed)
 
 	def corrupt_input(X,v=0.1,method='mask'):
 		''' corrupts the input using one of several methods
@@ -116,16 +119,16 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		Returns:
 		--------
-		param: act - final activation values
+		param: final activation values
 		type: theano matrix
 		'''
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 
-		# this is useful to keep around, if we introduce sparsity
-		self.hidden_act = self.activ[0](T.dot(X_tr,wts[0]) + bs[0]) 
-		return activ[1](T.dot(hidden_act,wts[1]) + bs[1])
+		# this is useful to keep around for when we introduce sparsity
+		self.hidden_act = self.activs[0](T.dot(X_tr,wts[0]) + bs[0]) 
+		return self.activs[1](T.dot(self.hidden_act,wts[1]) + bs[1])
 
 	def compute_loss(self,X,y,wts=None,bs=None):
 		''' Given inputs, returns the loss at the current state of the model'''
@@ -160,6 +163,6 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		X = T.matrix() # features to encode or decode
 
-		self.encode = theano.function(inputs=[X],outputs=self.activ[0](T.dot(X,wts[0])+b[0]))
-		self.decode = theano.function(inputs=[X],outputs=self.activ[1](T.dot(X,wts[1])+b[1]))
-		self.get_pretrained_weights = theano.function(inputs=[X],outputs=[wts[0].get_value(),bs[0].get_value()])
+		self.encode = theano.function(inputs=[X],outputs=self.activs[0](T.dot(X,wts[0])+bs[0]))
+		self.decode = theano.function(inputs=[X],outputs=self.activs[1](T.dot(X,wts[1])+bs[1]))
+		# self.get_pretrained_weights = theano.function(inputs=[X],outputs=[wts[0].get_value(),bs[0].get_value()])
