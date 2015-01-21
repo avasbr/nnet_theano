@@ -24,9 +24,9 @@ def regularization(wts,L1_decay=None,L2_decay=None):
 
 	reg_loss = 0
 	if L1_decay is not None:
-		reg_loss += L1_decay*sum([T.sum(T.abs_(w)) for w in wts])
+		reg_loss += 0.5*L1_decay*sum([T.sum(T.abs_(w)) for w in wts])
 	if L2_decay is not None:
-		reg_loss += L2_decay*sum([T.sum(T.abs_(w)) for w in wts])
+		reg_loss += 0.5*L2_decay*sum([T.sum(T.abs_(w)) for w in wts])
 
 	return reg_loss
 
@@ -68,7 +68,7 @@ def squared_error(y,y_pred):
 	type: theano scalar
 	'''
 
-	return T.mean(T.sum((y-y_pred)**2,axis=1))
+	return 0.5*T.mean(T.sum((y-y_pred)**2,axis=1))
 
 def sparsity(act,beta=None,rho=None):
 	''' Sparsity term used to enforce sparsity in the activations of hidden units for

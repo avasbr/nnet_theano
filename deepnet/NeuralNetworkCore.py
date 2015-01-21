@@ -272,7 +272,7 @@ class Network(object):
 		while epoch < num_epochs:
 			epoch += 1
 			tr_idx = np.random.permutation(m) # randomly shuffle the data indices
-			ss_idx = range(0,m,batch_size)
+			ss_idx = range(0,m+1,batch_size)
 			ss_idx[-1] += leftover # add the leftovers to the last batch
 			
 			# run through a full epoch
