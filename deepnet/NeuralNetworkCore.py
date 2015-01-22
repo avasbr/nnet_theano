@@ -136,7 +136,7 @@ class Network(object):
 			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs,**optim_params)
 		elif optim_type == 'fullbatch':
 			# full-batch optimization
-			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs)
+			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs,**optim_params)
 		else:
 			# error
 			sys.exit(type_err())
@@ -149,7 +149,7 @@ class Network(object):
 
 		return theano.shared(nu.floatX(X)),theano.shared(nu.floatX(y))
 
-	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500):
+	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500,**optim_params):
 		''' Full-batch optimization using update functions 
 
 		Parameters:
@@ -163,7 +163,42 @@ class Network(object):
 		param: num_epochs - the number of full runs through the dataset
 		type: int
 		'''
-		pass
+
+		X = T.matrix('X') # input variable
+		y = T.matrix('y') # output variable
+		idx = T.ivector('idx') # integer index
+
+		def compute_loss_from_vector(w,X,y):
+
+			# reshape w into wts/biases
+
+			# run fprop or dropout_fprop 
+			
+			
+
+		# compute loss
+		optim_loss, eval_loss = self.compute_loss(X,y) # loss functions
+
+		# compute grad
+		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters in a list
+		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
+
+		self.compute_loss_grad = theano.function(
+			inputs=[],
+			outputs=[optim_loss,grad_params],
+			givens={
+				X: X_tr
+				y: y_tr
+			})
+
+		try:
+			optim_method = optim_params.pop('optim_method')
+		except KeyError:
+			sys.exit(ne.method_err())
+
+		if optim_method == 'L-BFGS-B':
+			wf = scipy.optimize.minimize()
+		
 
 	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500,**optim_params):
 		''' Mini-batch optimization using update functions 
@@ -224,15 +259,16 @@ class Network(object):
 		
 		# for debugging purposes
 		y_pred = self.fprop(X)
-		self.pred_fcn = theano.function(inputs=[],
-			outputs=y_pred[:5,:],
+		self.pred_fcn = theano.function(
+			inputs=[],
+			outputs=y_pred,
 			allow_input_downcast=True,
 			mode='FAST_RUN',
 			givens={
 				X:X_tr
 			})
 
-		# training function
+		# training function for minibatchs
 		self.train = theano.function(
 			inputs=[idx],
 			updates=updates,
@@ -243,7 +279,7 @@ class Network(object):
 				y:y_tr[idx]
 			})
 
-		# training loss
+		# training loss - evaluates only the base error [TODO:do we want to change this to mce?]
 		self.compute_train_loss = theano.function(
 			inputs=[],
 			outputs=eval_loss,
@@ -254,7 +290,7 @@ class Network(object):
 				y: y_tr
 			})
 
-		# if validation data is provided, validation loss
+		# if validation data is provided, validation loss [TODO: do we want to change this to mce?]
 		self.compute_val_loss = None
 		if X_val is not None and y_val is not None:
 			X_val,y_val = self.shared_dataset(X_val,y_val)
@@ -272,7 +308,7 @@ class Network(object):
 		while epoch < num_epochs:
 			epoch += 1
 			tr_idx = np.random.permutation(m) # randomly shuffle the data indices
-			ss_idx = range(0,m+1,batch_size)
+			ss_idx = range(0,m+1,batch_size) # define the start-stop indices
 			ss_idx[-1] += leftover # add the leftovers to the last batch
 			
 			# run through a full epoch
