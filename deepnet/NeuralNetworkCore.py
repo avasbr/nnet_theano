@@ -146,7 +146,7 @@ class Network(object):
 		return theano.shared(nu.floatX(X)),theano.shared(nu.floatX(y))
 
 	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500,**optim_params):
-		''' Full-batch optimization using update functions 
+		''' Full-batch optimization using scipy's L-BFGS-B and CG
 
 		Parameters:
 		-----------
@@ -180,11 +180,18 @@ class Network(object):
 			outputs=[optim_loss,grad_w],
 			allow_input_downcast=True)
 
+		self.compute_loss = theano.function(
+			inputs=[w,X,y],
+			outputs=[optim_loss],
+			allow_input_downcast=True)
+
 		# initial value for the weight vector
 		wts0 = [wt.get_value() for wt in self.wts_]
 		bs0 = [b.get_value() for b in self.bs_]
 		w0 = nu.unroll(wts0,bs0)
 
+		print 'Pre-training loss:',self.compute_loss(w0,X_tr,y_tr)
+		
 		try:
 			optim_method = optim_params.pop('optim_method')
 		except KeyError:
@@ -194,10 +201,13 @@ class Network(object):
 		wf = sp.optimize.minimize(self.compute_loss_grad,w0,args=(X_tr,y_tr),method=optim_method,jac=True,
 			options={'maxiter':num_epochs})
 
+		print 'Post-training loss',self.compute_loss(wf.x,X_tr,y_tr)
+		
 		# re-roll this back into weights and biases
-		wts,bs = nu.reroll(wf,self.num_nodes)
-		self.wts_ = [theano.shared(floatX(wt)) for wt in wts]
-		self.bs_ = [theano.shared(floatX(b)) for b in bs]
+		wts,bs = nu.reroll(wf.x,self.num_nodes)
+
+		self.wts_ = [theano.shared(nu.floatX(wt)) for wt in wts]
+		self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
 	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500,**optim_params):
 		''' Mini-batch optimization using update functions 
