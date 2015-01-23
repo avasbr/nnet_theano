@@ -173,7 +173,7 @@ class Network(object):
 		# compute grad
 		params = [p for param in [wts,bs] for p in param] # all model parameters in a list
 		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
-		grad_w = nu.t_unroll(grad_params[:len(wts)],grad_params[len(wts):]) # gradient of the full weight vector
+		grad_w = nu.t_unroll(grad_params[:len(wts)],) # gradient of the full weight vector
 
 		self.compute_loss_grad = theano.function(
 			inputs=[w,X,y],
