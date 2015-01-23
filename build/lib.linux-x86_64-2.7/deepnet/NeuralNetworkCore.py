@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import numpy as np
+import scipy as sp
 from deepnet.common import nnetutils as nu
 from deepnet.common import nnetloss as nl
 from deepnet.common import nnetact as na
@@ -127,16 +128,11 @@ class Network(object):
 		# perform minibatch or full-batch optimization
 		num_epochs = optim_params.pop('num_epochs',None)
 		batch_size = optim_params.pop('batch_size',None)
-
-		# get the expressions for computing the training and validation losses, 
-		# as well as the gradients
 		
 		if optim_type == 'minibatch':	
-			# mini-batch optimization
 			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs,**optim_params)
 		elif optim_type == 'fullbatch':
-			# full-batch optimization
-			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs)
+			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs,**optim_params)
 		else:
 			# error
 			sys.exit(type_err())
@@ -149,7 +145,7 @@ class Network(object):
 
 		return theano.shared(nu.floatX(X)),theano.shared(nu.floatX(y))
 
-	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500):
+	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500,**optim_params):
 		''' Full-batch optimization using update functions 
 
 		Parameters:
@@ -163,7 +159,45 @@ class Network(object):
 		param: num_epochs - the number of full runs through the dataset
 		type: int
 		'''
-		pass
+
+		X = T.matrix('X') # input variable
+		y = T.matrix('y') # output variable
+		w = T.vector('w') # weight vector
+		 	
+		# reshape w into wts/biases
+		wts,bs = nu.t_reroll(w,self.num_nodes)
+		
+		# get the loss
+		optim_loss,eval_loss = self.compute_loss(X,y,wts=wts,bs=bs)
+	
+		# compute grad
+		params = [p for param in [wts,bs] for p in param] # all model parameters in a list
+		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
+		grad_w = nu.t_unroll(grad_params[:len(wts)],grad_params[len(wts):]) # gradient of the full weight vector
+
+		self.compute_loss_grad = theano.function(
+			inputs=[w,X,y],
+			outputs=[optim_loss,grad_w],
+			allow_input_downcast=True)
+
+		# initial value for the weight vector
+		wts0 = [wt.get_value() for wt in self.wts_]
+		bs0 = [b.get_value() for b in self.bs_]
+		w0 = nu.unroll(wts0,bs0)
+
+		try:
+			optim_method = optim_params.pop('optim_method')
+		except KeyError:
+			sys.exit(ne.method_err())
+
+		# scipy optimizer
+		wf = sp.optimize.minimize(self.compute_loss_grad,w0,args=(X_tr,y_tr),method=optim_method,jac=True,
+			options={'maxiter':num_epochs})
+
+		# re-roll this back into weights and biases
+		wts,bs = nu.reroll(wf,self.num_nodes)
+		self.wts_ = [theano.shared(floatX(wt)) for wt in wts]
+		self.bs_ = [theano.shared(floatX(b)) for b in bs]
 
 	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500,**optim_params):
 		''' Mini-batch optimization using update functions 
@@ -224,15 +258,16 @@ class Network(object):
 		
 		# for debugging purposes
 		y_pred = self.fprop(X)
-		self.pred_fcn = theano.function(inputs=[],
-			outputs=y_pred[:5,:],
+		self.pred_fcn = theano.function(
+			inputs=[],
+			outputs=y_pred,
 			allow_input_downcast=True,
 			mode='FAST_RUN',
 			givens={
 				X:X_tr
 			})
 
-		# training function
+		# training function for minibatchs
 		self.train = theano.function(
 			inputs=[idx],
 			updates=updates,
@@ -243,7 +278,7 @@ class Network(object):
 				y:y_tr[idx]
 			})
 
-		# training loss
+		# training loss - evaluates only the base error [TODO:do we want to change this to mce?]
 		self.compute_train_loss = theano.function(
 			inputs=[],
 			outputs=eval_loss,
@@ -254,7 +289,7 @@ class Network(object):
 				y: y_tr
 			})
 
-		# if validation data is provided, validation loss
+		# if validation data is provided, validation loss [TODO: do we want to change this to mce?]
 		self.compute_val_loss = None
 		if X_val is not None and y_val is not None:
 			X_val,y_val = self.shared_dataset(X_val,y_val)
@@ -272,7 +307,7 @@ class Network(object):
 		while epoch < num_epochs:
 			epoch += 1
 			tr_idx = np.random.permutation(m) # randomly shuffle the data indices
-			ss_idx = range(0,m+1,batch_size)
+			ss_idx = range(0,m+1,batch_size) # define the start-stop indices
 			ss_idx[-1] += leftover # add the leftovers to the last batch
 			
 			# run through a full epoch
@@ -429,7 +464,7 @@ class Network(object):
 			eval_loss = nl.cross_entropy(y,y_pred)
 		
 		elif 'squared_error' in self.loss_terms:
-			optim_loss = nl.squared_error(y,y_pred)
+			optim_loss = nl.squared_error(y,y_optim)
 			eval_loss = nl.squared_error(y,y_pred)
 		
 		else:
