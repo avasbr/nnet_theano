@@ -91,6 +91,7 @@ def main(argv):
 	n = int(argv[2])
 	config_file = argv[3] # config file which holds all the parameters
 	
+	np.random.seed(1234)
 	# load data
 	print 'Loading data...'
 	I = load_images(data_path)

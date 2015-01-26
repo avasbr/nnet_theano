@@ -132,7 +132,6 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 	def compute_loss(self,X,y,wts=None,bs=None):
 		''' Given inputs, returns the loss at the current state of the model'''
-		
 		# call the super-class function first...		
 		optim_loss, eval_loss = super(Autoencoder,self).compute_loss(X,y,wts,bs)
 
@@ -167,8 +166,9 @@ class Autoencoder(NeuralNetworkCore.Network):
 			allow_input_downcast=True)
 		self.decode = theano.function(inputs=[X],outputs=self.activs[1](T.dot(X,wts[1])+bs[1]),
 			allow_input_downcast=True)
+		
 		self.compute_max_activations = theano.function(inputs=[],
-			outputs=wts[0].T/T.sqrt(T.sum(wts[0]**2,axis=0)).dimshuffle(0,'x'),
+			outputs=wts[0].T/(T.sqrt(T.sum(wts[0]**2,axis=0)).dimshuffle(0,'x')),
 			allow_input_downcast=True)
 
 	def get_encoding_weights(self):

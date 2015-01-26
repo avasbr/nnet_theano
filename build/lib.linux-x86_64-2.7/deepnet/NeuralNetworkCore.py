@@ -28,6 +28,11 @@ class Network(object):
 		# number of nodes
 		self.num_nodes = [d]+num_hids+[k]
 
+		# total number of parameters in this neural network
+		self.num_params = 0
+		for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
+			self.num_params += (n1+1)*n2
+
 		# define activation functions		
 		self.activs = [None]*len(activs)
 		for idx,activ in enumerate(activs):
@@ -68,6 +73,7 @@ class Network(object):
 		'''
 		if seed is not None:
 			np.random.seed(seed=seed)
+			self.srng.seed(seed)
 
 		# weights and biases
 		if wts is None and bs is None:
@@ -146,7 +152,7 @@ class Network(object):
 		return theano.shared(nu.floatX(X)),theano.shared(nu.floatX(y))
 
 	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500,**optim_params):
-		''' Full-batch optimization using update functions 
+		''' Full-batch optimization using scipy's L-BFGS-B and CG
 
 		Parameters:
 		-----------
@@ -175,12 +181,12 @@ class Network(object):
 		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
 		grad_w = nu.t_unroll(grad_params[:len(wts)],grad_params[len(wts):]) # gradient of the full weight vector
 
-		self.compute_loss_grad = theano.function(
+		compute_loss_grad_from_vector = theano.function(
 			inputs=[w,X,y],
 			outputs=[optim_loss,grad_w],
 			allow_input_downcast=True)
 
-		self.compute_loss = theano.function(
+		compute_loss_from_vector = theano.function(
 			inputs=[w,X,y],
 			outputs=[optim_loss],
 			allow_input_downcast=True)
@@ -190,7 +196,10 @@ class Network(object):
 		bs0 = [b.get_value() for b in self.bs_]
 		w0 = nu.unroll(wts0,bs0)
 
-		print 'Pre-training loss:',self.compute_loss(w0,X_tr,y_tr)
+		# print 'Checking gradients for fun...'
+		# self.check_gradients(X_tr,y_tr,wts0,bs0)
+
+		# print 'Pre-training loss:',compute_loss_from_vector(w0,X_tr,y_tr)
 		
 		try:
 			optim_method = optim_params.pop('optim_method')
@@ -198,10 +207,10 @@ class Network(object):
 			sys.exit(ne.method_err())
 
 		# scipy optimizer
-		wf = sp.optimize.minimize(self.compute_loss_grad,w0,args=(X_tr,y_tr),method=optim_method,jac=True,
+		wf = sp.optimize.minimize(compute_loss_grad_from_vector,w0,args=(X_tr,y_tr),method=optim_method,jac=True,
 			options={'maxiter':num_epochs})
 
-		print 'Post-training loss',self.compute_loss(wf.x,X_tr,y_tr)
+		# print 'Post-training loss',compute_loss_from_vector(wf.x,X_tr,y_tr)
 		
 		# re-roll this back into weights and biases
 		wts,bs = nu.reroll(wf.x,self.num_nodes)
@@ -233,7 +242,6 @@ class Network(object):
 		idx = T.ivector('idx') # integer index
 		
 		optim_loss, eval_loss = self.compute_loss(X,y) # loss functions
-		
 		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters in a list
 		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
 		
@@ -429,6 +437,62 @@ class Network(object):
 
 		return act
 
+	def check_gradients(self,X_in,Y_in,wts=None,bs=None):
+		''' this seems like overkill, but I suppose it doesn't hurt to have it in here...'''
+
+		# assume that if it's not provided, they will be shared variables - this is
+		# probably dangerous, but this is a debugging tool anyway, so...whatever
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
+		else:
+			wts = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
+			bs = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
+
+		X = T.matrix() # inputs
+		Y = T.matrix() # labels
+		v = T.vector() # vector of biases and weights
+		i = T.lscalar() # index
+
+		# 1. compile the numerical gradient function
+		def compute_numerical_gradient(v,i,X,Y,eps=1e-4):
+			
+			# perturb the input
+			v_plus = T.inc_subtensor(v[i],eps)
+			v_minus = T.inc_subtensor(v[i],-1.0*eps)
+
+			# roll it back into the weight matrices and bias vectors
+			wts_plus, bs_plus = nu.t_reroll(v_plus,self.num_nodes)
+			wts_minus, bs_minus = nu.t_reroll(v_minus,self.num_nodes)
+			
+			# compute the loss for both sides, and then compute the numerical gradient
+			loss_plus,dummy = self.compute_loss(X,Y,wts=wts_plus,bs=bs_plus)
+			loss_minus,dummy = self.compute_loss(X,Y,wts_minus,bs_minus)
+			
+			return 1.0*(loss_plus-loss_minus)/(2*eps) # ( E(weights[i]+eps) - E(weights[i]-eps) )/(2*eps)
+
+		compute_ngrad = theano.function(inputs=[v,i,X,Y],outputs=compute_numerical_gradient(v,i,X,Y))
+
+		# 2. compile backprop (theano's autodiff)
+		optim_loss,eval_loss = self.compute_loss(X,Y,wts=wts,bs=bs)
+		params = [p for param in [wts,bs] for p in param] # all model parameters in a list
+		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
+		grad_w = nu.t_unroll(grad_params[:len(wts)],grad_params[len(wts):]) # gradient of the full weight vector
+ 		
+		compute_bgrad = theano.function(inputs=[X,Y],outputs=grad_w)
+
+		# compute the mean difference between the numerical and exact gradients
+		v0 = nu.unroll([wt.get_value() for wt in wts],[b.get_value() for b in bs])
+		idxs = np.random.permutation(self.num_params)[:(self.num_params/5)] # get the indices of the weights/biases we want to check
+
+ 		ngrad = [None]*len(idxs)
+		for j,idx in enumerate(idxs):
+			ngrad[j] = compute_ngrad(v0,idx,X_in,Y_in)
+		bgrad = compute_bgrad(X_in,Y_in)[idxs]
+
+		cerr = np.mean(np.abs(ngrad-bgrad))
+		assert cerr < 1e-10
+
 	def compute_loss(self,X,y,wts=None,bs=None):
 		''' Given inputs, returns the loss at the current state of the model
 
@@ -481,8 +545,8 @@ class Network(object):
 			sys.exit('Must be either cross_entropy or squared_error')
 
 		if 'regularization' in self.loss_terms:
-			L1_decay = self.loss_params.get('L1_decay')
-			L2_decay = self.loss_params.get('L2_decay')
+			L1_decay = self.loss_params.get('l1_decay')
+			L2_decay = self.loss_params.get('l2_decay')
 			optim_loss += nl.regularization(wts,L1_decay=L1_decay,L2_decay=L2_decay)
 			
 		return optim_loss,eval_loss

@@ -25,12 +25,13 @@ def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None):
 	# infer the types of all the parameters
 	for key,value in model_params.iteritems():
 		model_params[key] = ast.literal_eval(value)
+	print model_params
 
 	# now parse the optimization methods
 	for key,value in optim_params.iteritems():
 		if not (key == 'init_method' or key == 'optim_method' or key == 'optim_type'):
 			optim_params[key] = ast.literal_eval(value)
-	
+
 	# construct the model based on the specified architecture
 	if model == 'MultilayerNet':
 		nnet = mln.MultilayerNet(**model_params)

@@ -21,12 +21,12 @@ def regularization(wts,L1_decay=None,L2_decay=None):
 	type: theano scalar
 
 	'''
-
+	
 	reg_loss = 0
 	if L1_decay is not None:
 		reg_loss += 0.5*L1_decay*sum([T.sum(T.abs_(w)) for w in wts])
 	if L2_decay is not None:
-		reg_loss += 0.5*L2_decay*sum([T.sum(T.abs_(w)) for w in wts])
+		reg_loss += 0.5*L2_decay*sum([T.sum(w**2) for w in wts])
 
 	return reg_loss
 
