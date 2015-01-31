@@ -71,7 +71,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 		else:
 			super(Autoencoder,self).set_weights(init_method=init_method,scale_factor=scale_factor,seed=seed)
 
-	def corrupt_input(X,v=0.1,method='mask'):
+	def corrupt_input(self,X,v=0.1,method='mask'):
 		''' corrupts the input using one of several methods
 
 		Parameters:
@@ -88,7 +88,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 		if method == 'mask':
 			return X*self.srng.binomial(X.shape,n=1,p=1-v,dtype=theano.config.floatX)
 		elif method == 'gauss':
-			return X*self.srng.normal(X.shape,avg=0.0,std=v,dtype=theano.config.floatX)
+			return X + self.srng.normal(X.shape,avg=0.0,std=v,dtype=theano.config.floatX)
 
 		# TODO: will probably want to add support for "salt-and-pepper" (essentially an XOR)
 		# noise. See the theano notes for the implementation, though to use bitwise ops, everything
@@ -100,7 +100,26 @@ class Autoencoder(NeuralNetworkCore.Network):
 		encoding and decoding functions'''
 		
 		super(Autoencoder,self).fit(X_tr,X_tr,X_val=X_val,y_val=X_val,**optim_params)
-		self.compile_autoencoder_functions()		
+		self.compile_autoencoder_functions()
+
+	def train_fprop(self,X_tr,wts=None,bs=None):
+		''' Performs forward propagation with for training, which could be different from
+		the vanilla frprop we would use for testing, due to extra bells and whistles such as 
+		dropout, corruption, etc'''
+
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
+
+		if 'corrupt' in self.loss_terms:
+			# get the input and hidden layer dropout probabilities
+			corrupt_p = self.loss_params['corrupt_p']
+			corrupt_type = self.loss_params['corrupt_type']
+		
+			self.hidden_act = self.activs[0](T.dot(self.corrupt_input(X_tr,corrupt_p,corrupt_type),wts[0]) + bs[0]) # compute the first activation
+			return self.activs[1](T.dot(self.hidden_act,wts[1]) + bs[1])
+		else:
+			return self.fprop(X_tr,wts,bs)
 
 	def fprop(self,X_tr,wts=None,bs=None):
 		''' Performs forward propagation through the network - this fprop is simplified
@@ -127,7 +146,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 			bs = self.bs_
 
 		# this is useful to keep around for when we introduce sparsity
-		self.hidden_act = self.activs[0](T.dot(X_tr,wts[0]) + bs[0]) 
+		self.hidden_act = self.activs[0](T.dot(X_tr,wts[0]) + bs[0])
 		return self.activs[1](T.dot(self.hidden_act,wts[1]) + bs[1])
 
 	def compute_loss(self,X,y,wts=None,bs=None):

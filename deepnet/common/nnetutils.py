@@ -43,7 +43,7 @@ def t_reroll(v,n_nodes):
 
 def unroll(wts,bs):
 	'''Flattens matrices and concatenates to a vector '''
-	v = np.array([])
+	v = np.array([],dtype=theano.config.floatX)
 	for w,b in zip(wts,bs):
 		v = np.concatenate((v,w.flatten(),b.flatten()))
 	return v
@@ -63,3 +63,10 @@ def reroll(v,n_nodes):
 
 def floatX(X):
 	return np.asarray(X,dtype=theano.config.floatX)
+
+def pretty_print(header,params):
+	print header
+	print '-'*len(header)
+	for k,v in params.iteritems():
+		print k,':',v
+	print '\n'

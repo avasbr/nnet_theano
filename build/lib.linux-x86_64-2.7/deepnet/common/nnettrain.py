@@ -3,6 +3,7 @@ from deepnet import MultilayerNet as mln
 from deepnet import Autoencoder as ae
 from deepnet.common import nnetact as na
 from deepnet.common import nneterror as ne
+from deepnet.common import nnetutils as nu
 import sys
 import ast
 from ConfigParser import SafeConfigParser, ConfigParser
@@ -24,13 +25,15 @@ def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None):
 
 	# infer the types of all the parameters
 	for key,value in model_params.iteritems():
-		model_params[key] = ast.literal_eval(value)
-	print model_params
+		if not (key == 'corrupt_type'):
+			model_params[key] = ast.literal_eval(value)
+	nu.pretty_print('Model Parameters',model_params)
 
 	# now parse the optimization methods
 	for key,value in optim_params.iteritems():
 		if not (key == 'init_method' or key == 'optim_method' or key == 'optim_type'):
 			optim_params[key] = ast.literal_eval(value)
+	nu.pretty_print('Optimization Parameters',optim_params)
 
 	# construct the model based on the specified architecture
 	if model == 'MultilayerNet':

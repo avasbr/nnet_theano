@@ -5,5 +5,5 @@
 # import Autoencoder as ae
 # import NeuralNetworkCore
 
-# class StackedDenoisingAutoencoder(NeuralNetworkCore.Network):
+# class Pretrainer(NeuralNetworkCore.Network):
 

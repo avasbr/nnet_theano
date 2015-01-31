@@ -198,7 +198,6 @@ class Network(object):
 
 		# print 'Checking gradients for fun...'
 		# self.check_gradients(X_tr,y_tr,wts0,bs0)
-
 		# print 'Pre-training loss:',compute_loss_from_vector(w0,X_tr,y_tr)
 		
 		try:
@@ -206,11 +205,15 @@ class Network(object):
 		except KeyError:
 			sys.exit(ne.method_err())
 
+		# very annoying.
+		if optim_method == 'L-BFGS-B' and theano.config.floatX == 'float32':
+			sys.exit('Sorry, L-BFGS-B only works with float64')
+
 		# scipy optimizer
 		wf = sp.optimize.minimize(compute_loss_grad_from_vector,w0,args=(X_tr,y_tr),method=optim_method,jac=True,
 			options={'maxiter':num_epochs})
 
-		# print 'Post-training loss',compute_loss_from_vector(wf.x,X_tr,y_tr)
+		print 'Post-training loss',compute_loss_from_vector(wf.x,X_tr,y_tr)
 		
 		# re-roll this back into weights and biases
 		wts,bs = nu.reroll(wf.x,self.num_nodes)
@@ -364,47 +367,34 @@ class Network(object):
 			retain_prob = 1.-p
 			return (1./retain_prob)*act*self.srng.binomial(act.shape,p=retain_prob,dtype=theano.config.floatX)
 
-	def dropout_fprop(self,X,wts=None,bs=None):
-		''' Performs forward propagation with dropout
-		
-		Parameters:
-		-----------
-		param: X - input data
-		type: theano matrix
+	def train_fprop(self,X,wts=None,bs=None):
+		''' Performs forward propagation with for training, which could be different from
+		the vanilla frprop we would use for testing, due to extra bells and whistles such as 
+		dropout, corruption, etc'''
 
-		param: wts - weights
-		type: numpy ndarray, optional
-
-		param: bs - bias
-		type: numpy ndarray, optional
-
-		Returns:
-		--------
-		param: final activation values
-		type: theano matrix
-	
-		'''
-		
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 
-		# get the input and hidden layer dropout probabilities
-		input_p = self.loss_params['input_p']
-		hidden_p = self.loss_params['hidden_p']
+		if 'dropout' in self.loss_terms:
+			# get the input and hidden layer dropout probabilities
+			input_p = self.loss_params['input_p']
+			hidden_p = self.loss_params['hidden_p']
 		
-		act = self.activs[0](T.dot(self.dropout(X,input_p),wts[0]) + bs[0]) # compute the first activation
-		if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
-			for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activs[1:])):
-				act = activ(T.dot(self.dropout(act,hidden_p),w) + b)
-		
-		act = T.switch(act<0.00001,0.00001,act)
-		act = T.switch(act>0.99999,0.99999,act)
+			act = self.activs[0](T.dot(self.dropout(X,input_p),wts[0]) + bs[0]) # compute the first activation
+			if len(wts) > 1: # len(wts) = 1 corresponds to softmax regression
+				for i,(w,b,activ) in enumerate(zip(wts[1:],bs[1:],self.activs[1:])):
+					act = activ(T.dot(self.dropout(act,hidden_p),w) + b)
+			
+			act = T.switch(act<0.00001,0.00001,act)
+			act = T.switch(act>0.99999,0.99999,act)
 
-		return act
+			return act
+		else:
+			return self.fprop(X,wts,bs)
 
 	def fprop(self,X,wts=None,bs=None):
-		''' Performs forward propagation through the network
+		''' Performs vanilla forward propagation through the network
 
 		Parameters
 		----------
@@ -522,12 +512,8 @@ class Network(object):
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
-		
-		if 'dropout' in self.loss_terms:
-			y_optim = self.dropout_fprop(X,wts,bs) # based on the output from applying dropout
-		else:
-			y_optim = self.fprop(X,wts,bs)
 
+		y_optim = self.train_fprop(X,wts,bs)
 		y_pred = self.fprop(X,wts,bs)
 
 		optim_loss = None # the loss function which will specifically be optimized over
