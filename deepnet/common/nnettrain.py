@@ -19,16 +19,35 @@ def clean_model_params(model_params):
 
 def clean_optim_params(optim_params):
 	''' parses the optimization parameters '''
-	 for key,value in optim_params.iteritems():
+	for key,value in optim_params.iteritems():
 		if not (key == 'init_method' or key == 'optim_method' or key == 'optim_type'):
 			optim_params[key] = ast.literal_eval(value)
 
 	return optim_params
 
-def train_single_net(model,model_params,optim_params):
-	
+def train_single_net(model_type,model_params,optim_params,X_tr,y_tr=None,X_val=None,y_val=None,wts=None,bs=None):
+	''' defines a single neural network given a model type and parameters '''
 
-def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None):
+	# get the model and optimization parameters in a format for ingestion
+	model_params = clean_model_params(dict(model_params))
+	optim_params = clean_optim_params(dict(optim_params))
+	
+	nnet = None
+
+	# construct the model based on the specified architecture
+	if model_type == 'MultilayerNet':
+		nnet = mln.MultilayerNet(**model_params)
+		nnet.fit(X_tr,y_tr,X_val=X_val,y_val=y_val,wts=wts,bs=bs,**optim_params)
+	elif model_type == 'Autoencoder':
+		nnet = ae.Autoencoder(**model_params)
+		nnet.fit(X_tr,wts=None,bs=None**optim_params)
+	else:
+		sys.exit(ne.model_error())
+
+	# train the neural network
+	return nnet
+
+def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None,wts=None,bs=None):
 	''' parses a config file to initialize a neural network '''
 
 	# define the parser
@@ -36,33 +55,40 @@ def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None):
 	cfg_parser.read(config_file)
 
 	# get the model type, model parameters and optimization parameters
-	model = cfg_parser.get('model_type','arch')
-	if arch == 'Pretrainer':
+	model_type = cfg_parser.get('model_type','arch')
+	if model_type == 'Pretrainer':
+		X_in = X_tr
 		num_trainers = (len(cfg_parser.get_sections())-1)/3
-		for idx in num_trainers:
-			curr_model_type = 'model_type_'+idx
-			curr_model_param = 'model_params_'+idx
-			curr_optim_param = 'optim_params_'+idx
-
-	else:
-		model_params = clean_model_params(dict(cfg_parser.items('model_params')))
-		optim_params = clean_model_params(dict(cfg_parser.items('optim_params')))
-
-		# start constructing the neural network model
+		nnet_wts = [None]*len(num_trainers)
+		nnet_bs = [None]*len(num_trainers)
 		nnet = None
 
-		# construct the model based on the specified architecture
-		if model == 'MultilayerNet':
-			nnet = mln.MultilayerNet(**model_params)
-			nnet.fit(X_tr,y_tr,X_val=X_val,y_val=y_val,**optim_params)
-		elif model == 'Autoencoder':
-			nnet = ae.Autoencoder(**model_params)
-			nnet.fit(X_tr,**optim_params)
-		else:
-			sys.exit(ne.model_error())
+		for idx in range(1,num_trainers+1):	
+			
+			# parse out the next pre-trainer...
+			curr_model_type = cfg_parser.items('model_type_'+idx)
+			curr_model_params = cfg_parser.items('model_params_'+idx)
+			curr_optim_params = cfg_parser.items('optim_params_'+idx)
+			
+			# train it...
+			if curr_model_type == 'Autoencoder':
+				nnet = train_single_net(curr_model_type,curr_model_params,curr_optim_params,X_in)
+			# this can only happen once, so if y_tr is specified, 
+			elif curr_model_type == 'MultilayerNet':
+				nnet = train_single_nnet(curr_model_type,curr_model_params,curr_optim_params,X_in,y_tr=y_tr)
+			
+			# get the next input ready
+			X_in = nnet.encode(X_in)
+			nnet_wts[idx] = nnet.wts_[0] # pre-trained weights
+			nnet_bs[idx] = nnet.bs_[0] # pre-trained biases
 
-		# train the neural network
-		return nnet
+			return nnet_wts,nnet_bs
+	else:
+		
+		model_params = cfg_parser.items('model_params')
+		optim_params = cfg_parser.items('optim_params')
+
+		return train_single_net(model_type,model_params,optim_params,X_tr,y_tr=y_tr)
 
 #TODO: THROW ALL THIS ERROR CHECKING IN THE NEURAL NETWORK CORE CONSTRUCTOR
 

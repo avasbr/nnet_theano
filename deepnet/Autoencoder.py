@@ -91,11 +91,11 @@ class Autoencoder(NeuralNetworkCore.Network):
 			# additive gaussian noise
 			return X + self.srng.normal(X.shape,avg=0.0,std=v,dtype=theano.config.floatX)
 
-	def fit(self,X_tr,wts=None,bs=None,X_val=None,**optim_params):
+	def fit(self,X_tr,X_val=None,wts=None,bs=None**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
 		encoding and decoding functions'''
 		
-		super(Autoencoder,self).fit(X_tr,X_tr,X_val=X_val,y_val=X_val,**optim_params)
+		super(Autoencoder,self).fit(X_tr,X_tr,X_val=X_val,y_val=X_val,wts=None,bs=None,**optim_params)
 		self.compile_autoencoder_functions()
 
 	def train_fprop(self,X_tr,wts=None,bs=None):

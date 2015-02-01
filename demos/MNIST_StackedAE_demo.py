@@ -1,5 +1,6 @@
 import idx2numpy
 import numpy as np
+import matplotlib.pyplot as plt
 from deepnet.common import nnettrain as nt
 from deepnet import MultilayerNet as mln
 import theano
@@ -37,46 +38,20 @@ def load_mnist(data_path):
 
 	return X_tr,y_tr,X_te,y_te
 
-def train_nnet_mnist():
-	''' Trains a neural network on the MNIST data '''
-
-	print 'Loading data...'
-	
-	# default paths
-	data_path = '/home/g64892/datasets/MNIST'
-	config_file = '/home/g64892/Desktop/nnet_theano/MNIST_config.ini'
-	X_tr,y_tr,X_te,y_te = load_mnist(data_path)
-
-	# Train a model with the same learning rate on the training set, test on the testing set:
-	print 'Training...'
-	d = X_tr.shape[1]
-	k = y_tr.shape[1]
-
-	mln_params = {'d':d,'k':k,'num_hid':[50],'activ':['sigmoid','softmax'],
-	'loss_terms':['cross_entropy','dropout'],'L2_decay':0.0001,'input_p':0.2,'hidden_p':0.5}
-
-	rmsprop_params = {'init_method':'gauss','scale_factor':0.001,'optim_method':'RMSPROP',
-	'opt_type':'minibatch','num_epochs':100,'batch_size':128,'learn_rate':0.01,
-	'rho':0.9,'max_norm':False,'c':15}
-
-	nnet = mln.MultilayerNet(**mln_params)
-	nnet.fit(X_tr,y_tr,**rmsprop_params)
-
-	print 'Performance on test set:'
-	print 100*nnet.score(X_te,y_te),'%'
-
-def main(argv): 
+def main(argv):
 	data_path = argv[1] # directory path that contains all the MNIST data
-	config_file = argv[2] # config file which holds all the parameters
-	
+	pt_config_file = argv[2] # config file for pre-training
+	ft_config_file = argv[3] # config file for fine-tuning
+
 	# load data
 	print 'Loading data...'
 	X_tr,y_tr,X_te,y_te = load_mnist(data_path)
 	
 	# train a neural network
-	print 'Training...'
-	nnet = nt.train_nnet(config_file,X_tr,y_tr=y_tr)
-
+	print 'Pre-training...'
+	pt_wts = nt.train_nnet(pt_config_file,X_tr,y_tr=y_tr)
+	
+	print 'Fine-tuning...'
 	# test it
 	print 'Performance on test set:'
 	print 100*nnet.score(X_te,y_te),'%'
