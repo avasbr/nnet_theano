@@ -91,7 +91,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 			# additive gaussian noise
 			return X + self.srng.normal(X.shape,avg=0.0,std=v,dtype=theano.config.floatX)
 
-	def fit(self,X_tr,X_val=None,wts=None,bs=None**optim_params):
+	def fit(self,X_tr,X_val=None,wts=None,bs=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
 		encoding and decoding functions'''
 		
@@ -99,8 +99,8 @@ class Autoencoder(NeuralNetworkCore.Network):
 		self.compile_autoencoder_functions()
 
 	def train_fprop(self,X_tr,wts=None,bs=None):
-		''' Performs forward propagation with for training, which could be different from
-		the vanilla frprop we would use for testing, due to extra bells and whistles such as 
+		''' Performs forward propagation for training, which could be different from
+		the vanilla fprop we would use for testing, due to extra bells and whistles such as 
 		dropout, corruption, etc'''
 
 		if wts is None and bs is None:

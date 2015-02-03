@@ -47,12 +47,14 @@ def main(argv):
 	print 'Loading data...'
 	X_tr,y_tr,X_te,y_te = load_mnist(data_path)
 	
-	# train a neural network
+	# pre-train to get a good weight initialization
 	print 'Pre-training...'
-	pt_wts = nt.train_nnet(pt_config_file,X_tr,y_tr=y_tr)
+	pt_wts,pt_bs = nt.train_nnet(pt_config_file,X_tr,y_tr=y_tr)
 	
+	# fine-tune to improve classification results
 	print 'Fine-tuning...'
-	# test it
+	nt.train_nnet(ft_config_file,X_tr,y_tr=y_tr,wts=pt_wts,bs=pt_bs)
+
 	print 'Performance on test set:'
 	print 100*nnet.score(X_te,y_te),'%'
 

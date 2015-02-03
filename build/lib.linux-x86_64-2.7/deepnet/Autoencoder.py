@@ -88,30 +88,26 @@ class Autoencoder(NeuralNetworkCore.Network):
 		if method == 'mask':
 			return X*self.srng.binomial(X.shape,n=1,p=1-v,dtype=theano.config.floatX)
 		elif method == 'gauss':
+			# additive gaussian noise
 			return X + self.srng.normal(X.shape,avg=0.0,std=v,dtype=theano.config.floatX)
 
-		# TODO: will probably want to add support for "salt-and-pepper" (essentially an XOR)
-		# noise. See the theano notes for the implementation, though to use bitwise ops, everything
-		# needs to be an int - in general, this is less often used, so we'll throw this on the 
-		# back-burner
-
-	def fit(self,X_tr,wts=None,bs=None,X_val=None,**optim_params):
+	def fit(self,X_tr,X_val=None,wts=None,bs=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
 		encoding and decoding functions'''
 		
-		super(Autoencoder,self).fit(X_tr,X_tr,X_val=X_val,y_val=X_val,**optim_params)
+		super(Autoencoder,self).fit(X_tr,X_tr,X_val=X_val,y_val=X_val,wts=None,bs=None,**optim_params)
 		self.compile_autoencoder_functions()
 
 	def train_fprop(self,X_tr,wts=None,bs=None):
-		''' Performs forward propagation with for training, which could be different from
-		the vanilla frprop we would use for testing, due to extra bells and whistles such as 
+		''' Performs forward propagation for training, which could be different from
+		the vanilla fprop we would use for testing, due to extra bells and whistles such as 
 		dropout, corruption, etc'''
 
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 
-		if 'corrupt' in self.loss_terms:
+		if 'corruption' in self.loss_terms:
 			# get the input and hidden layer dropout probabilities
 			corrupt_p = self.loss_params['corrupt_p']
 			corrupt_type = self.loss_params['corrupt_type']

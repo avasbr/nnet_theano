@@ -5,6 +5,13 @@ def model_error():
 		'\n(3) Pretrainer')
 	return err_msg
 
+def weight_error():
+	err_msg = ('Not a valid option for initializing weights! Your choices are:'
+		'\n(1) gauss'
+		'\n(2) fan-io'
+		'\n(3) custom')
+	return err_msg
+
 def method_err():
 	err_msg = ('No (valid) method provided to fit! Your choices are:'
 				'\n(1) SGD: vanilla stochastic gradient descent'+

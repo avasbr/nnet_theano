@@ -40,7 +40,7 @@ def train_single_net(model_type,model_params,optim_params,X_tr,y_tr=None,X_val=N
 		nnet.fit(X_tr,y_tr,X_val=X_val,y_val=y_val,wts=wts,bs=bs,**optim_params)
 	elif model_type == 'Autoencoder':
 		nnet = ae.Autoencoder(**model_params)
-		nnet.fit(X_tr,wts=None,bs=None**optim_params)
+		nnet.fit(X_tr,wts=wts,bs=bs,**optim_params)
 	else:
 		sys.exit(ne.model_error())
 
@@ -58,17 +58,17 @@ def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None,wts=None,bs=None
 	model_type = cfg_parser.get('model_type','arch')
 	if model_type == 'Pretrainer':
 		X_in = X_tr
-		num_trainers = (len(cfg_parser.get_sections())-1)/3
-		nnet_wts = [None]*len(num_trainers)
-		nnet_bs = [None]*len(num_trainers)
+		num_trainers = (len(cfg_parser.sections())-1)/3
+		nnet_wts = [None]*num_trainers
+		nnet_bs = [None]*num_trainers
 		nnet = None
 
 		for idx in range(1,num_trainers+1):	
 			
 			# parse out the next pre-trainer...
-			curr_model_type = cfg_parser.items('model_type_'+idx)
-			curr_model_params = cfg_parser.items('model_params_'+idx)
-			curr_optim_params = cfg_parser.items('optim_params_'+idx)
+			curr_model_type = cfg_parser.get('model_type_'+str(idx),'arch')
+			curr_model_params = cfg_parser.items('model_params_'+str(idx))
+			curr_optim_params = cfg_parser.items('optim_params_'+str(idx))
 			
 			# train it...
 			if curr_model_type == 'Autoencoder':
@@ -82,13 +82,12 @@ def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None,wts=None,bs=None
 			nnet_wts[idx] = nnet.wts_[0] # pre-trained weights
 			nnet_bs[idx] = nnet.bs_[0] # pre-trained biases
 
-			return nnet_wts,nnet_bs
+		# return the pre-trained weights and biases
+		return nnet_wts,nnet_bs
 	else:
-		
 		model_params = cfg_parser.items('model_params')
 		optim_params = cfg_parser.items('optim_params')
-
-		return train_single_net(model_type,model_params,optim_params,X_tr,y_tr=y_tr)
+		return train_single_net(model_type,model_params,optim_params,X_tr,y_tr=y_tr,wts=wts,bs=bs)
 
 #TODO: THROW ALL THIS ERROR CHECKING IN THE NEURAL NETWORK CORE CONSTRUCTOR
 

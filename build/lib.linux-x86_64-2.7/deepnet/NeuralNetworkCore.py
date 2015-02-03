@@ -67,9 +67,10 @@ class Network(object):
 		type: np.ndarray, optional
 
 		param: init_method - calls some pre-specified weight initialization routines
-		type: string, optional
+		type: string
 
 		param: scale_factor - for gauss, corresponds to the standard deviation
+		type: float, optional
 		'''
 		if seed is not None:
 			np.random.seed(seed=seed)
@@ -85,21 +86,24 @@ class Network(object):
 					wts[i] = scale_factor*np.random.randn(n1,n2)
 					bs[i] = np.zeros(n2)
 
-			if init_method == 'fan-io':
+			elif init_method == 'fan-io':
 				for i,(n1,n2) in enumerate(zip(self.num_nodes[:-1],self.num_nodes[1:])):
 					v = np.sqrt(scale_factor*1./(n1+n2+1))
 					wts[i] = 2.0*v*np.random.rand(n1,n2)-v 
 					bs[i] = np.zeros(n2)
-		else:
-			assert isinstance(wts,list)
-			assert isinstance(bs,list)
-			
-		self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
-		self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
+			elif init_method == 'custom':
+				assert isinstance(wts,list)
+				assert isinstance(bs,list)
 
-	def fit(self,X_tr,y_tr,X_val=None,y_val=None,**optim_params):
-		''' The primary function which ingests data and fits to the neural network. Currently
-		only supports mini-batch training.
+			else:
+				sys.exit(ne.weight_error())
+			
+			self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
+			self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
+
+	def fit(self,X_tr,y_tr,X_val=None,y_val=None,wts=None,bs=None,**optim_params):
+		''' The primary function which ingests data and fits to the neural network. 
+		Currently only supports mini-batch training.
 
 		Parameters:
 		-----------
@@ -124,7 +128,7 @@ class Network(object):
 			init_method = optim_params.pop('init_method')
 			scale_factor = optim_params.pop('scale_factor')
 			seed = optim_params.pop('seed')
-			self.set_weights(init_method=init_method,scale_factor=scale_factor,seed=seed)
+			self.set_weights(wts=wts,bs=bs,init_method=init_method,scale_factor=scale_factor,seed=seed)
 
 		try:
 			optim_type = optim_params.pop('optim_type')
