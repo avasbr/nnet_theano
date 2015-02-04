@@ -14,7 +14,6 @@ def clean_model_params(model_params):
 	for key,value in model_params.iteritems():
 		if not (key == 'corrupt_type'):
 			model_params[key] = ast.literal_eval(value)
-
 	return model_params
 
 def clean_optim_params(optim_params):
@@ -22,7 +21,6 @@ def clean_optim_params(optim_params):
 	for key,value in optim_params.iteritems():
 		if not (key == 'init_method' or key == 'optim_method' or key == 'optim_type'):
 			optim_params[key] = ast.literal_eval(value)
-
 	return optim_params
 
 def train_single_net(model_type,model_params,optim_params,X_tr,y_tr=None,X_val=None,y_val=None,wts=None,bs=None):

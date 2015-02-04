@@ -217,7 +217,7 @@ class Network(object):
 		wf = sp.optimize.minimize(compute_loss_grad_from_vector,w0,args=(X_tr,y_tr),method=optim_method,jac=True,
 			options={'maxiter':num_epochs})
 
-		print 'Post-training loss',compute_loss_from_vector(wf.x,X_tr,y_tr)
+		# print 'Post-training loss',compute_loss_from_vector(wf.x,X_tr,y_tr)
 		
 		# re-roll this back into weights and biases
 		wts,bs = nu.reroll(wf.x,self.num_nodes)

@@ -46,14 +46,21 @@ def main(argv):
 	# load data
 	print 'Loading data...'
 	X_tr,y_tr,X_te,y_te = load_mnist(data_path)
+
+	print 'First training a normal network without pretraining...'
+	nnet = nt.train_nnet(ft_config_file,X_tr,y_tr)
+
+	print 'Performance on test set:'
+	print 100*nnet.score(X_te,y_te)
 	
 	# pre-train to get a good weight initialization
+	print 'Now training a network that first pretrains the network in an unsupervised fashion...'
 	print 'Pre-training...'
 	pt_wts,pt_bs = nt.train_nnet(pt_config_file,X_tr,y_tr=y_tr)
 	
 	# fine-tune to improve classification results
 	print 'Fine-tuning...'
-	nt.train_nnet(ft_config_file,X_tr,y_tr=y_tr,wts=pt_wts,bs=pt_bs)
+	nnet = nt.train_nnet(ft_config_file,X_tr,y_tr=y_tr,wts=pt_wts,bs=pt_bs)
 
 	print 'Performance on test set:'
 	print 100*nnet.score(X_te,y_te),'%'
