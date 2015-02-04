@@ -73,14 +73,15 @@ def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None,wts=None,bs=None
 			# train it...
 			if curr_model_type == 'Autoencoder':
 				nnet = train_single_net(curr_model_type,curr_model_params,curr_optim_params,X_in)
-			# this can only happen once, so if y_tr is specified, 
+				X_in = nnet.encode(X_in)
+			
+			# this can really only happen once, so if y_tr is specified, it's probably for the last layer
 			elif curr_model_type == 'MultilayerNet':
-				nnet = train_single_nnet(curr_model_type,curr_model_params,curr_optim_params,X_in,y_tr=y_tr)
+				nnet = train_single_net(curr_model_type,curr_model_params,curr_optim_params,X_in,y_tr=y_tr)
 			
 			# get the next input ready
-			X_in = nnet.encode(X_in)
-			nnet_wts[idx] = nnet.wts_[0] # pre-trained weights
-			nnet_bs[idx] = nnet.bs_[0] # pre-trained biases
+			nnet_wts[idx-1] = nnet.wts_[0] # pre-trained weights
+			nnet_bs[idx-1] = nnet.bs_[0] # pre-trained biases
 
 		# return the pre-trained weights and biases
 		return nnet_wts,nnet_bs
