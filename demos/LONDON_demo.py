@@ -34,7 +34,7 @@ X,y,X_te = load_london_dataset(base_path)
 X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.6)
 
 # build a neural network
-mln_params = {'d':d,'k':k,'num_hid':[200,100,50,25],'activ':[na.reLU,na.reLU,na.reLU,na.sigmoid,na.softmax],
+mln_params = {'d':d,'k':k,'num_hid':[60],'activ':[na.reLU,na.reLU,na.reLU,na.sigmoid,na.softmax],
 'loss_terms':['cross_entropy','dropout'],'input_p':0.2,'hidden_p':0.5}
 
 # stochastic gradient descent parameters

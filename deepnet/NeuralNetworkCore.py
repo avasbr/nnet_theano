@@ -55,7 +55,7 @@ class Network(object):
 		self.srng = RandomStreams()
 		self.srng.seed(1234) 
 
-	def set_weights(self,wts=None,bs=None,init_method='gauss',scale_factor=0.001,seed=None):
+	def set_weights(self,wts=None,bs=None,init_method=None,scale_factor=None,seed=None):
 		''' Initializes the weights and biases of the neural network 
 		
 		Parameters:
@@ -125,15 +125,15 @@ class Network(object):
 		'''
 		# initialize all the weights
 		if all(node for node in self.num_nodes):
-			init_method = optim_params.pop('init_method')
-			scale_factor = optim_params.pop('scale_factor')
-			seed = optim_params.pop('seed')
+			init_method = optim_params.get('init_method')
+			scale_factor = optim_params.get('scale_factor')
+			seed = optim_params.get('seed')
 			self.set_weights(wts=wts,bs=bs,init_method=init_method,scale_factor=scale_factor,seed=seed)
 
 		try:
 			optim_type = optim_params.pop('optim_type')
 		except KeyError:
-			sys.exit(ne.type_err())
+			sys.exit(ne.opt_type_err())
 
 		# perform minibatch or full-batch optimization
 		num_epochs = optim_params.pop('num_epochs',None)
@@ -145,7 +145,7 @@ class Network(object):
 			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs,**optim_params)
 		else:
 			# error
-			sys.exit(type_err())
+			sys.exit(ne.opt_type_err())
 		
 		return self
 
@@ -283,7 +283,7 @@ class Network(object):
 		
 		# for debugging purposes
 		y_pred = self.fprop(X)
-		self.pred_fcn = theano.function(
+		self.compute_pred = theano.function(
 			inputs=[],
 			outputs=y_pred,
 			allow_input_downcast=True,
