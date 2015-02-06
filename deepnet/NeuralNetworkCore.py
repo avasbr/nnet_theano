@@ -226,7 +226,8 @@ class Network(object):
 		self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
 	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500,**optim_params):
-		''' Mini-batch optimization using update functions 
+		''' Mini-batch optimization using update functions; however, if the batch size = m, then this is basically
+		full-batch learning with gradient descent
 
 		Parameters:
 		-----------
