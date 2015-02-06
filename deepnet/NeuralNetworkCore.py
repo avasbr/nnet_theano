@@ -91,15 +91,15 @@ class Network(object):
 					v = np.sqrt(scale_factor*1./(n1+n2+1))
 					wts[i] = 2.0*v*np.random.rand(n1,n2)-v 
 					bs[i] = np.zeros(n2)
-			elif init_method == 'custom':
-				assert isinstance(wts,list)
-				assert isinstance(bs,list)
-
 			else:
 				sys.exit(ne.weight_error())
-			
-			self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
-			self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
+
+		else:
+			assert isinstance(wts,list)
+			assert isinstance(bs,list)
+	
+		self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
+		self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
 
 	def fit(self,X_tr,y_tr,X_val=None,y_val=None,wts=None,bs=None,**optim_params):
 		''' The primary function which ingests data and fits to the neural network. 
@@ -155,7 +155,7 @@ class Network(object):
 
 		return theano.shared(nu.floatX(X)),theano.shared(nu.floatX(y))
 
-	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=500,**optim_params):
+	def fullbatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,num_epochs=None,**optim_params):
 		''' Full-batch optimization using scipy's L-BFGS-B and CG
 
 		Parameters:

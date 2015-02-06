@@ -8,8 +8,7 @@ def model_error():
 def weight_error():
 	err_msg = ('Not a valid option for initializing weights! Your choices are:'
 		'\n(1) gauss'
-		'\n(2) fan-io'
-		'\n(3) custom')
+		'\n(2) fan-io')
 	return err_msg
 
 def method_err():
