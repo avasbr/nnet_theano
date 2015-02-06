@@ -127,3 +127,57 @@ def adagrad(params,grad_params,learn_rate=1.,eps=1e-6,max_norm=False,c=5):
 		updates.append((param,param_))
 
 	return updates
+
+def momentum(params,grad_params,learn_rate=1.,alpha=0.9):
+	''' standard sgd with 'momentum'
+
+	param: params - model parameters
+	type: list of theano shared variables
+
+	param: grad_params - derivative of the loss with respect to the model parameters
+	type: list of theano variables
+
+	param: learn_rate - 'master' learning rate for the adagrad algorithm
+	type: float
+
+	param: alpha - viscosity term for momentum 
+	type: float
+	'''
+	updates = []
+	for param,grad_param in zip(params,grad_params):
+
+		# velocity term with vicosity
+		velocity = theano.shared(nu.floatX(np.zeros(param.get_value().shape)))
+		velocity_ = alpha*velocity - learn_rate*grad_param
+
+		# paramater update
+		param_ = param + velocity_
+
+		# collected updates of both the parameter and velocity
+		updates.append((velocity,velocity_))
+		updates.append((param, param_))
+
+	return updates
+
+def improved_momentum(params,grad_params,learn_rate=1.,alpha=0.9):
+	''' "improved" or "nesterov" momentum where a jump in the previous direction
+	is made first, and then the gradient computed at the new location - switches the 
+	order of things, but apparently this works better in general
+
+	param: params - model parameters
+	type: list of theano shared variables
+
+	param: grad_params - derivative of the loss with respect to the model parameters
+	type: list of theano variables
+
+	param: learn_rate - 'master' learning rate for the adagrad algorithm
+	type: float
+
+	param: alpha - viscosity term for momentum 
+	type: float
+	'''
+
+	updates = []
+	for param,grad_param in zip(params,grad_params):
+		pass
+
