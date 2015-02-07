@@ -54,7 +54,9 @@ def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None,wts=None,bs=None
 
 	# get the model type, model parameters and optimization parameters
 	model_type = cfg_parser.get('model_type','arch')
+	
 	if model_type == 'Pretrainer':
+		
 		X_in = X_tr
 		num_trainers = (len(cfg_parser.sections())-1)/3
 		nnet_wts = [None]*num_trainers
@@ -77,12 +79,13 @@ def train_nnet(config_file,X_tr,y_tr=None,X_val=None,y_val=None,wts=None,bs=None
 			elif curr_model_type == 'MultilayerNet':
 				nnet = train_single_net(curr_model_type,curr_model_params,curr_optim_params,X_in,y_tr=y_tr)
 			
-			# get the next input ready
-			nnet_wts[idx-1] = nnet.wts_[0] # pre-trained weights
-			nnet_bs[idx-1] = nnet.bs_[0] # pre-trained biases
+			# store the pre-trained weights and biases
+			pt_wts,pt_bs = nnet.get_weights_and_biases()
+			nnet_wts[idx-1] = pt_wts
+			nnet_bs[idx-1] = pt_bs
 
-		# return the pre-trained weights and biases
 		return nnet_wts,nnet_bs
+	
 	else:
 		model_params = cfg_parser.items('model_params')
 		optim_params = cfg_parser.items('optim_params')

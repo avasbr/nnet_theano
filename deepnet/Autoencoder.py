@@ -20,7 +20,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 		self.encode = None
 		self.tied_wts = tied_wts
 
-	def set_weights(self,wts=None,bs=None,init_method='gauss',scale_factor=None,seed=None):
+	def set_weights(self,wts=None,bs=None,init_method=None,scale_factor=None,seed=None):
 		''' Initializes the weights and biases of the neural network 
 		
 		Parameters:
@@ -64,7 +64,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 				assert isinstance(wts,list)
 				assert isinstance(bs,list)
 
-			self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
+			self.wts_ = [theano.shared(nu.floatX(wt),borrow=True) for wt in wts]
 			self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
 
 		# if encoding and decoding matrices are distinct, just default back to the normal case

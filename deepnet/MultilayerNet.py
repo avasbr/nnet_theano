@@ -40,7 +40,7 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		type: dictionary
 
 		'''
-		super(MultilayerNet,self).fit(X_tr,y_tr,X_val=X_val,y_val=y_val,**optim_params)
+		super(MultilayerNet,self).fit(X_tr,y_tr,X_val=X_val,y_val=y_val,wts=wts,bs=bs,**optim_params)
 		self.compile_multilayer_functions()
 
 	def compile_multilayer_functions(self,wts=None,bs=None):

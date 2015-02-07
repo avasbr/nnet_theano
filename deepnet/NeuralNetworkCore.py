@@ -98,7 +98,7 @@ class Network(object):
 			assert isinstance(wts,list)
 			assert isinstance(bs,list)
 	
-		self.wts_ = [theano.shared(nu.floatX(w),borrow=True) for w in wts]
+		self.wts_ = [theano.shared(nu.floatX(wt),borrow=True) for wt in wts]
 		self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
 
 	def fit(self,X_tr,y_tr,X_val=None,y_val=None,wts=None,bs=None,**optim_params):
@@ -541,3 +541,11 @@ class Network(object):
 			optim_loss += nl.regularization(wts,L1_decay=L1_decay,L2_decay=L2_decay)
 			
 		return optim_loss,eval_loss
+
+	def get_weights_and_biases(self):
+		''' simple function which returns the weights and biases as numpy arrays'''
+
+		wts = [wt.get_value() for wt in self.wts_]
+		bs = [b.get_value() for b in self.bs_]
+		
+		return wts,bs
