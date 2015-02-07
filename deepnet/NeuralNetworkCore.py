@@ -4,14 +4,16 @@ import sys
 import time
 import numpy as np
 import scipy as sp
+import matplotlib.pyplot as plt
+import theano
+import theano.tensor as T
+from theano.tensor.shared_randomstreams import RandomStreams
+
 from deepnet.common import nnetutils as nu
 from deepnet.common import nnetloss as nl
 from deepnet.common import nnetact as na
 from deepnet.common import nnetoptim as nopt
 from deepnet.common import nneterror as ne
-import theano
-import theano.tensor as T
-from theano.tensor.shared_randomstreams import RandomStreams
 
 class Network(object):
 	''' Core neural network class that forms the basis for all further implementations (e.g. 
@@ -225,7 +227,7 @@ class Network(object):
 		self.wts_ = [theano.shared(nu.floatX(wt)) for wt in wts]
 		self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
-	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=100,num_epochs=500,**optim_params):
+	def minibatch_optimize(self,X_tr,y_tr,X_val=None,y_val=None,batch_size=None,num_epochs=None,plotting=False,**optim_params):
 		''' Mini-batch optimization using update functions; however, if the batch size = m, then this is basically
 		full-batch learning with gradient descent
 
@@ -330,6 +332,8 @@ class Network(object):
 				})
 
 		# iterate through the training examples
+		tr_loss = []
+		val_loss = []
 		while epoch < num_epochs:
 			epoch += 1
 			tr_idx = np.random.permutation(m) # randomly shuffle the data indices
@@ -344,11 +348,24 @@ class Network(object):
 				
 				# self.train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
 				self.train(batch_idx)
-				
+			
 			if epoch%10 == 0:
-				tr_loss = self.compute_train_loss()
-
-				print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss)
+				tr_loss.append(self.compute_train_loss())
+				if not self.compute_val_loss is None:
+					val_loss.append(self.compute_val_loss())
+					print 'Epoch: %s, Training error: %.8f, Validation error: %.8f'%(epoch,tr_loss[-1],val_loss[-1])
+				else:
+					print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss[-1])
+		
+		# training and validation curves		
+		if plotting:
+			num_pts = len(tr_loss)
+			pts = [idx*10 for idx in range(num_pts)]
+			plt.plot(pts,tr_loss)
+			# sort of a weak way to check if validation losses have been computed
+			if len(val_loss) > 0:
+				plt.plot(pts,val_loss)
+			plt.show()
 
 	def dropout(self,act,p=0.5):
 		''' Randomly drops an activation with probability p 
