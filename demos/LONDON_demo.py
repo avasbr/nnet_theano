@@ -28,23 +28,25 @@ def write_pred_to_csv(y_pred):
 
 # load the dataset
 print 'Loading the london dataset...'
-base_path = '/home/avasbr/datasets/kaggle/london'
+base_path = '/home/avasbr/datasets/kaggle/london_dataset'
 X,y,X_te = load_london_dataset(base_path)
 
 X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.6)
 
-# build a neural network
-mln_params = {'d':d,'k':k,'num_hid':[60],'activ':[na.reLU,na.reLU,na.reLU,na.sigmoid,na.softmax],
-'loss_terms':['cross_entropy','dropout'],'input_p':0.2,'hidden_p':0.5}
+# neural network parameters
+mln_params = {'d':d,'k':k,'num_hids':[150],'activs':['sigmoid','softmax'],
+'loss_terms':['cross_entropy','regularization'],'l2_decay':0.01}
 
-# stochastic gradient descent parameters
-# optim_params = {'method':'SGD','opt_type':'mb','learn_rate':0.5,'num_epochs':100,'batch_size':100}
-optim_params = {'method':'RMSPROP','opt_type':'mb','num_epochs':500,'batch_size':128,'learn_rate':0.01,
-'rho':0.9,'max_norm':True,'c':2}
+# optimization parameters
+lbfgs_params = {'init_method':'gauss','scale_factor':0.1,'optim_type':'fullbatch',
+'optim_method':'L-BFGS-B','num_epochs':500,'plotting':True}
+
+sgd_params = {'init_method':'gauss','scale_factor':0.1,'optim_type':'minibatch',
+'optim_method':'SGD','batch_size':600,'num_epochs':500,'learn_rate':0.1,'plotting':True}
 
 print 'Fitting a neural network...'
 nnet = mln.MultilayerNet(**mln_params)
-nnet.fit(X_tr,y_tr,**optim_params)
+nnet.fit(X_tr,y_tr,X_val=X_val,y_val=y_val,**sgd_params)
 
 print 'Performance on validation set:'
 print 100*nnet.score(X_val,y_val),'%'

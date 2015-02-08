@@ -103,7 +103,7 @@ class Network(object):
 		self.wts_ = [theano.shared(nu.floatX(wt),borrow=True) for wt in wts]
 		self.bs_ = [theano.shared(nu.floatX(b),borrow=True) for b in bs]
 
-	def fit(self,X_tr,y_tr,X_val=None,y_val=None,wts=None,bs=None,**optim_params):
+	def fit(self,X_tr,y_tr,X_val=None,y_val=None,wts=None,bs=None,plotting=False,**optim_params):
 		''' The primary function which ingests data and fits to the neural network. 
 		Currently only supports mini-batch training.
 
@@ -127,9 +127,12 @@ class Network(object):
 		'''
 		# initialize all the weights
 		if all(node for node in self.num_nodes):
-			init_method = optim_params.get('init_method')
-			scale_factor = optim_params.get('scale_factor')
-			seed = optim_params.get('seed')
+			init_method = optim_params.pop('init_method')
+			scale_factor = optim_params.pop('scale_factor')
+			try:
+				seed = optim_params.pop('seed')
+			except KeyError:
+				seed = None
 			self.set_weights(wts=wts,bs=bs,init_method=init_method,scale_factor=scale_factor,seed=seed)
 
 		try:
@@ -142,7 +145,8 @@ class Network(object):
 		batch_size = optim_params.pop('batch_size',None)
 		
 		if optim_type == 'minibatch':	
-			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs,**optim_params)
+			self.minibatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,batch_size=batch_size,num_epochs=num_epochs,
+				plotting=plotting,**optim_params)
 		elif optim_type == 'fullbatch':
 			self.fullbatch_optimize(X_tr,y_tr,X_val=X_val,y_val=y_val,num_epochs=num_epochs,**optim_params)
 		else:
@@ -345,7 +349,7 @@ class Network(object):
 				
 				n_batch_iter = (epoch-1)*n_batches + idx # total number of batches processed up until now
 				batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
-				
+					
 				# self.train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
 				self.train(batch_idx)
 			
@@ -357,14 +361,17 @@ class Network(object):
 				else:
 					print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss[-1])
 		
-		# training and validation curves		
+		# training and validation curves - very useful to see how training error evolves	
 		if plotting:
 			num_pts = len(tr_loss)
 			pts = [idx*10 for idx in range(num_pts)]
-			plt.plot(pts,tr_loss)
+			plt.plot(pts,tr_loss,label='Training loss')
 			# sort of a weak way to check if validation losses have been computed
 			if len(val_loss) > 0:
-				plt.plot(pts,val_loss)
+				plt.plot(pts,val_loss,label='Validation loss')
+
+			plt.xlabel('Epochs')
+			plt.ylabel('Loss')
 			plt.show()
 
 	def dropout(self,act,p=0.5):
