@@ -372,6 +372,7 @@ class Network(object):
 
 			plt.xlabel('Epochs')
 			plt.ylabel('Loss')
+			plt.legend(loc='upper right')
 			plt.show()
 
 	def dropout(self,act,p=0.5):
