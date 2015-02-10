@@ -57,6 +57,16 @@ class Network(object):
 		self.srng = RandomStreams()
 		self.srng.seed(1234) 
 
+		# compute test loss - this will come in handy for all subclasses as well
+		X = T.matrix()
+		Y = T.matrix()
+		dummy,eval_loss = self.compute_loss(X,y)
+		self.compute_test_loss = theano.function(
+			inputs=[X,Y],
+			outputs=eval_loss,
+			allow_input_downcast=True,
+			mode='FAST_RUN')
+
 	def set_weights(self,wts=None,bs=None,init_method=None,scale_factor=None,seed=None):
 		''' Initializes the weights and biases of the neural network 
 		
@@ -285,7 +295,7 @@ class Network(object):
 		leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
 		epoch = 0
 
-		# load the full dataset into a shared variable
+		# load the full dataset into a shared variable - this is especially useful for test
 		X_tr,y_tr = self.shared_dataset(X_tr,y_tr)
 		
 		# for debugging purposes
@@ -310,7 +320,7 @@ class Network(object):
 				y:y_tr[idx]
 			})
 
-		# training loss - evaluates only the base error [TODO:do we want to change this to mce?]
+		
 		self.compute_train_loss = theano.function(
 			inputs=[],
 			outputs=eval_loss,
@@ -321,7 +331,7 @@ class Network(object):
 				y: y_tr
 			})
 
-		# if validation data is provided, validation loss [TODO: do we want to change this to mce?]
+		# if validation data is provided, validation loss
 		self.compute_val_loss = None
 		if X_val is not None and y_val is not None:
 			X_val,y_val = self.shared_dataset(X_val,y_val)
