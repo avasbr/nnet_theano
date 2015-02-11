@@ -177,12 +177,18 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		X = T.matrix() # features to encode or decode
 
-		self.encode = theano.function(inputs=[X],outputs=self.activs[0](T.dot(X,wts[0])+bs[0]),
-			allow_input_downcast=True)
-		self.decode = theano.function(inputs=[X],outputs=self.activs[1](T.dot(X,wts[1])+bs[1]),
+		self.encode = theano.function(
+			inputs=[X],
+			outputs=self.activs[0](T.dot(X,wts[0])+bs[0]),
 			allow_input_downcast=True)
 		
-		self.compute_max_activations = theano.function(inputs=[],
+		self.decode = theano.function(
+			inputs=[X],
+			outputs=self.activs[1](T.dot(X,wts[1])+bs[1]),
+			allow_input_downcast=True)
+		
+		self.compute_max_activations = theano.function(
+			inputs=[],
 			outputs=wts[0].T/(T.sqrt(T.sum(wts[0]**2,axis=0)).dimshuffle(0,'x')),
 			allow_input_downcast=True)
 

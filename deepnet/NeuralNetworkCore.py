@@ -55,17 +55,8 @@ class Network(object):
 		
 		# initialize the random number stream
 		self.srng = RandomStreams()
-		self.srng.seed(1234) 
+		self.srng.seed(1234)
 
-		# compute test loss - this will come in handy for all subclasses as well
-		X = T.matrix()
-		Y = T.matrix()
-		dummy,eval_loss = self.compute_loss(X,y)
-		self.compute_test_loss = theano.function(
-			inputs=[X,Y],
-			outputs=eval_loss,
-			allow_input_downcast=True,
-			mode='FAST_RUN')
 
 	def set_weights(self,wts=None,bs=None,init_method=None,scale_factor=None,seed=None):
 		''' Initializes the weights and biases of the neural network 
@@ -162,8 +153,30 @@ class Network(object):
 		else:
 			# error
 			sys.exit(ne.opt_type_err())
-		
+
+		optim_loss,eval_loss = self.compute_loss(X,y,wts=wts,bs=bs)
+		self.compile_nnet_functions()
+
 		return self
+
+	def compile_nnet_functions(self,wts=None,bs=None):
+		''' compiles a set of functions needed for all neural networks '''
+
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
+
+		X = T.matrix()
+		y = T.matrix()
+
+		# computing the loss for an arbitrary test input - this is particularly useful 
+		# when 
+		dummy,eval_loss = self.compute_loss(X,y,wts=wts,bs=bs)
+		self.compute_test_loss = theano.function(
+			inputs=[X,y],
+			outputs=eval_loss,
+			allow_input_downcast=True,
+			mode='FAST_RUN')
 
 	def shared_dataset(self,X,y):
 		''' As per the deep learning tutorial, loading the data all at once (if possible)
@@ -300,7 +313,7 @@ class Network(object):
 		
 		# for debugging purposes
 		y_pred = self.fprop(X)
-		self.compute_pred = theano.function(
+		compute_pred = theano.function(
 			inputs=[],
 			outputs=y_pred,
 			allow_input_downcast=True,
@@ -310,7 +323,7 @@ class Network(object):
 			})
 
 		# training function for minibatchs
-		self.train = theano.function(
+		train = theano.function(
 			inputs=[idx],
 			updates=updates,
 			allow_input_downcast=True,
@@ -321,7 +334,7 @@ class Network(object):
 			})
 
 		
-		self.compute_train_loss = theano.function(
+		compute_train_loss = theano.function(
 			inputs=[],
 			outputs=eval_loss,
 			allow_input_downcast=True,
@@ -332,10 +345,11 @@ class Network(object):
 			})
 
 		# if validation data is provided, validation loss
-		self.compute_val_loss = None
+		compute_val_loss = None
+
 		if X_val is not None and y_val is not None:
 			X_val,y_val = self.shared_dataset(X_val,y_val)
-			self.compute_val_loss = theano.function(
+			compute_val_loss = theano.function(
 				inputs=[],
 				outputs=eval_loss,
 				allow_input_downcast=True,
@@ -364,9 +378,9 @@ class Network(object):
 				self.train(batch_idx)
 			
 			if epoch%10 == 0:
-				tr_loss.append(self.compute_train_loss())
-				if not self.compute_val_loss is None:
-					val_loss.append(self.compute_val_loss())
+				tr_loss.append(compute_train_loss())
+				if not compute_val_loss is None:
+					val_loss.append(compute_val_loss())
 					print 'Epoch: %s, Training error: %.8f, Validation error: %.8f'%(epoch,tr_loss[-1],val_loss[-1])
 				else:
 					print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss[-1])

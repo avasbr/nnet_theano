@@ -68,6 +68,15 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		y_prob = self.fprop(X,wts,bs) # forward propagate through the network
 		pred = T.argmax(y_prob,axis=1) # predict outputs
 
-		# compile the functions - this is what the user can use to do prediction
-		self.predict = theano.function([X],pred,mode='FAST_RUN',allow_input_downcast=True)
-		self.score = theano.function([X,y],1.0-T.mean(T.neq(pred,T.argmax(y,axis=1))),mode='FAST_RUN',allow_input_downcast=True)
+		# compile the functions - this is what the user can use to do prediction and scoring
+		self.predict = theano.function(
+			inputs=[X],
+			outputs=pred,
+			mode='FAST_RUN',
+			allow_input_downcast=True)
+		
+		self.score = theano.function(
+			inputs=[X,y],
+			outputs=1.0-T.mean(T.neq(pred,T.argmax(y,axis=1))),
+			mode='FAST_RUN',
+			allow_input_downcast=True)
