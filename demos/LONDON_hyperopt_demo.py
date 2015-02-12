@@ -31,12 +31,12 @@ def write_pred_to_csv(y_pred):
 
 # load the dataset
 print 'Loading the london dataset...'
-base_path = '/home/avasbr/datasets/kaggle/london_dataset'
+base_path = '/home/bhargav/datasets/kaggle_data/london/dataset'
 X,y,X_te = load_london_dataset(base_path)
 
 def get_loss(mln_params,sgd_params):
-	# re-shuffles the training/validation everytime - this is important because otherwise, we'll just be
-	# overfitting to the validation set
+	'''re-shuffles the training/validation everytime - this is important because otherwise, we'll 
+	just be overfitting to the validation set'''
 	X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.6)
 	nnet = mln.MultilayerNet(**mln_params)
 	nnet.fit(X_tr,y_tr,**sgd_params)
@@ -46,34 +46,31 @@ def get_loss(mln_params,sgd_params):
 
 def hyperopt_obj_fn(args):
 	''' hyper-opt objective function '''
-	num_hid,learn_rate,l2_decay,scale_factor,init_method,num_epochs = args
+	num_hid,learn_rate,l1_decay,l2_decay,activs,scale_factor,init_method,num_epochs,rho = args
 	
 	# multilayer net parameters
-	mln_params = {'d':d,'k':k,'num_hids':[num_hid],'activs':['sigmoid','softmax'],
-	'loss_terms':['cross_entropy','regularization'],'l2_decay':l2_decay}
+	mln_params = {'d':d,'k':k,'num_hids':[num_hid],'activs':activs,
+	'loss_terms':['cross_entropy','regularization'],'l2_decay':l2_decay,'l1_decay':l1_decay}
 
-	sgd_params = {'init_method':'gauss','scale_factor':scale_factor,'optim_type':'minibatch',
-	'optim_method':'SGD','batch_size':600,'num_epochs':num_epochs,'learn_rate':learn_rate}
+	# sgd_params = {'init_method':init_method,'scale_factor':scale_factor,'optim_type':'minibatch',
+	# 'optim_method':'SGD','batch_size':600,'num_epochs':num_epochs,'learn_rate':learn_rate}
+
+	rmsprop_params = {'init_method':init_method,'scale_factor':scale_factor,'optim_type':'minibatch',
+	'optim_method':'RMSPROP','batch_size':600,'num_epochs':num_epochs,'learn_rate':learn_rate,'rho':rho}
 	
-	return get_loss(mln_params,sgd_params)
+	return get_loss(mln_params,rmsprop_params)
 
-# define the hyperopt configuration space
-space = (
+rmsprop_space = (
 	hp.qloguniform('num_hid',log(10),log(1000),1),
-	hp.loguniform('learn_rate',log(1e-4),log(100)),
-	hp.loguniform('l2_decay',log(1e-5),log(10)),
+	hp.loguniform('learn_rate',log(1e-4),log(10)),
+	hp.choice('l1_decay',[0,hp.loguniform('l1',log(1e-6),2.)]),
+	hp.choice('l2_decay',[0,hp.loguniform('l2',log(1e-6),2.)]),
+	hp.choice('activs',[['sigmoid','softmax'],['reLU','softmax']]),
 	hp.loguniform('scale_factor',log(1e-3),log(1)),
 	hp.choice('init_method',['gauss','fan-io']),
 	hp.qloguniform('num_epochs',log(10),log(1e3),1),
+	hp.uniform('rho',1e-2,0.99)
 )
 
-best = fmin(hyperopt_obj_fn, space, algo=tpe.suggest,max_evals=100)
+best = fmin(hyperopt_obj_fn, rmsprop_space, algo=tpe.suggest,max_evals=100)
 print best
-
-
-
-
-
-
-
-
