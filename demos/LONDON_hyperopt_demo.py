@@ -34,7 +34,15 @@ print 'Loading the london dataset...'
 base_path = '/home/avasbr/datasets/kaggle/london_dataset'
 X,y,X_te = load_london_dataset(base_path)
 
-X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.6)
+def get_loss(mln_params,sgd_params):
+	# re-shuffles the training/validation everytime - this is important because otherwise, we'll just be
+	# overfitting to the validation set
+	X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.6)
+	nnet = mln.MultilayerNet(**mln_params)
+	nnet.fit(X_tr,y_tr,**sgd_params)
+	loss = float(nnet.compute_test_loss(X_val,y_val))
+
+	return loss
 
 def hyperopt_obj_fn(args):
 	''' hyper-opt objective function '''
@@ -46,12 +54,8 @@ def hyperopt_obj_fn(args):
 
 	sgd_params = {'init_method':'gauss','scale_factor':scale_factor,'optim_type':'minibatch',
 	'optim_method':'SGD','batch_size':600,'num_epochs':num_epochs,'learn_rate':learn_rate}
-
-	# train a neural network
-	nnet = mln.MultilayerNet(**mln_params)
-	nnet.fit(X_tr,y_tr,**sgd_params)
-
-	return nnet.compute_test_loss(X_val,X_val)
+	
+	return get_loss(mln_params,sgd_params)
 
 # define the hyperopt configuration space
 space = (
@@ -60,10 +64,10 @@ space = (
 	hp.loguniform('l2_decay',log(1e-5),log(10)),
 	hp.loguniform('scale_factor',log(1e-3),log(1)),
 	hp.choice('init_method',['gauss','fan-io']),
-	hp.qloguniform('num_epochs',log(10),log(1e4),1),
+	hp.qloguniform('num_epochs',log(10),log(1e3),1),
 )
 
-best = fmin(hyperopt_obj_fn, space, algo=tpe.suggest, max_evals = 100)
+best = fmin(hyperopt_obj_fn, space, algo=tpe.suggest,max_evals=100)
 print best
 
 

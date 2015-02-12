@@ -2,6 +2,7 @@ from deepnet import MultilayerNet as mln
 from deepnet.common import nnetact as na
 from deepnet.common import nnetutils as nu
 import numpy as np
+from math import log
 
 # this dataset isn't changing, so just hard-code these values
 m = 1000
@@ -34,15 +35,15 @@ X,y,X_te = load_london_dataset(base_path)
 X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.6)
 
 # neural network parameters
-mln_params = {'d':d,'k':k,'num_hids':[150],'activs':['sigmoid','softmax'],
-'loss_terms':['cross_entropy','regularization'],'l2_decay':0.01}
+mln_params = {'d':d,'k':k,'num_hids':[38],'activs':['sigmoid','softmax'],
+'loss_terms':['cross_entropy','regularization'],'l2_decay':log(8.6)}
 
 # optimization parameters
 lbfgs_params = {'init_method':'gauss','scale_factor':0.1,'optim_type':'fullbatch',
 'optim_method':'L-BFGS-B','num_epochs':500,'plotting':True}
 
 sgd_params = {'init_method':'gauss','scale_factor':0.1,'optim_type':'minibatch',
-'optim_method':'SGD','batch_size':600,'num_epochs':500,'learn_rate':0.1,'plotting':True}
+'optim_method':'SGD','batch_size':600,'num_epochs':600,'learn_rate':log(3.7),'plotting':True}
 
 print 'Fitting a neural network...'
 nnet = mln.MultilayerNet(**mln_params)

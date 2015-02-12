@@ -154,7 +154,6 @@ class Network(object):
 			# error
 			sys.exit(ne.opt_type_err())
 
-		optim_loss,eval_loss = self.compute_loss(X,y,wts=wts,bs=bs)
 		self.compile_nnet_functions()
 
 		return self
@@ -374,8 +373,8 @@ class Network(object):
 				n_batch_iter = (epoch-1)*n_batches + idx # total number of batches processed up until now
 				batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
 					
-				# self.train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
-				self.train(batch_idx)
+				# train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
+				train(batch_idx)
 			
 			if epoch%10 == 0:
 				tr_loss.append(compute_train_loss())
