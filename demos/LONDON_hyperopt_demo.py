@@ -34,15 +34,31 @@ print 'Loading the london dataset...'
 base_path = '/home/bhargav/datasets/kaggle_data/london/dataset'
 X,y,X_te = load_london_dataset(base_path)
 
-def get_loss(mln_params,sgd_params):
+def compute_split_loss(mln_params,optim_params):
 	'''re-shuffles the training/validation everytime - this is important because otherwise, we'll 
 	just be overfitting to the validation set'''
+
 	X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.6)
+	
 	nnet = mln.MultilayerNet(**mln_params)
-	nnet.fit(X_tr,y_tr,**sgd_params)
+	nnet.fit(X_tr,y_tr,**optim_params)
 	loss = float(nnet.compute_test_loss(X_val,y_val))
 
 	return loss
+
+def compute_cv_loss(mln_params,optim_params):
+	''' Uses k-fold cross-validation to compute the average loss '''
+
+	k = 10
+	cv_splits = nu.split_k_fold_cross_val(X,y,k=k)
+	loss = 0.
+	for split in cv_splits:
+		X_tr,y_tr,X_val,y_val = split
+		nnet = mln.MultilayerNet(**mln_params)
+		nnet.fit(X_tr,y_tr,**optim_params)
+		loss += float(nnet.compute_test_loss(X_val,y_val))
+
+	return loss./k # average loss
 
 def hyperopt_obj_fn(args):
 	''' hyper-opt objective function '''
@@ -52,13 +68,10 @@ def hyperopt_obj_fn(args):
 	mln_params = {'d':d,'k':k,'num_hids':[num_hid],'activs':activs,
 	'loss_terms':['cross_entropy','regularization'],'l2_decay':l2_decay,'l1_decay':l1_decay}
 
-	# sgd_params = {'init_method':init_method,'scale_factor':scale_factor,'optim_type':'minibatch',
-	# 'optim_method':'SGD','batch_size':600,'num_epochs':num_epochs,'learn_rate':learn_rate}
-
 	rmsprop_params = {'init_method':init_method,'scale_factor':scale_factor,'optim_type':'minibatch',
 	'optim_method':'RMSPROP','batch_size':600,'num_epochs':num_epochs,'learn_rate':learn_rate,'rho':rho}
 	
-	return get_loss(mln_params,rmsprop_params)
+	return compute_cv_loss(mln_params,rmsprop_params)
 
 rmsprop_space = (
 	hp.qloguniform('num_hid',log(10),log(1000),1),

@@ -70,3 +70,30 @@ def pretty_print(header,params):
 	for k,v in params.iteritems():
 		print k,':',v
 	print '\n'
+
+def split_k_fold_cross_val(X,y,k=10):
+	''' Returns a list of tuples consisting of cross-val indices '''
+	# set up the indices
+	m = X.shape[0]
+	batch_size = int(m/k) # round down
+	leftover = m - batch_size*k
+	batch_idx = range(0,m+1,m/k)
+	batch_idx[-1] += leftover
+
+	# split the data 
+	idx = list(np.random.permutation(m))
+	cross_val_splits = [None]*k
+	for i,(start,end) in enumerate(zip(batch_idx[:-1],batch_idx[1:])):
+		te_idx = idx[start:end] # held-out slice
+		tr_idx = idx[0:start]+idx[end:] # training slice
+		X_tr = X[tr_idx] 
+		y_tr = y[tr_idx]
+		X_te = X[te_idx]
+		y_te = y[te_idx] 
+		cross_val_splits[i] = (X_tr,y_tr,X_te,y_te)
+
+	return cross_val_splits
+
+
+
+	

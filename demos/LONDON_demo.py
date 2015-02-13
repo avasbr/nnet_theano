@@ -29,7 +29,7 @@ def write_pred_to_csv(y_pred):
 
 # load the dataset
 print 'Loading the london dataset...'
-base_path = '/home/bhargav/datasets/kaggle_data/london/dataset'
+base_path = '/home/avasbr/datasets/kaggle/london_dataset'
 X,y,X_te = load_london_dataset(base_path)
 
 X_tr,y_tr,X_val,y_val = nu.split_train_val(X,y,0.6)
@@ -49,8 +49,7 @@ rmsprop_params = {'init_method':'fan-io','scale_factor':0.2686979643701496,'opti
 'optim_method':'RMSPROP','batch_size':600,'num_epochs':191,'learn_rate':0.0008333688149869977,
 'rho':0.47643610595875113,'plotting':True}
 
-
-print 'Fitting a neural network...'
+ 'Fitting a neural network...'
 nnet = mln.MultilayerNet(**mln_params)
 nnet.fit(X_tr,y_tr,X_val=X_val,y_val=y_val,**rmsprop_params)
 
