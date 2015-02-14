@@ -373,7 +373,6 @@ class Network(object):
 				n_batch_iter = (epoch-1)*n_batches + idx # total number of batches processed up until now
 				batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
 					
-				# train(X_tr[batch_idx,:],y_tr[batch_idx,:]) # update the model
 				train(batch_idx)
 			
 			if epoch%10 == 0:

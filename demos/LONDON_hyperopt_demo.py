@@ -5,7 +5,6 @@ import numpy as np
 from hyperopt import hp,fmin,tpe
 from math import log
 
-
 # this dataset isn't changing, so just hard-code these values
 m = 1000
 d = 40
@@ -58,7 +57,10 @@ def compute_cv_loss(mln_params,optim_params):
 		nnet.fit(X_tr,y_tr,**optim_params)
 		loss += float(nnet.compute_test_loss(X_val,y_val))
 
-	return loss./k # average loss
+	avg_loss = 1.*loss/k
+	print avg_loss
+
+	return avg_loss # average loss
 
 def hyperopt_obj_fn(args):
 	''' hyper-opt objective function '''
@@ -69,7 +71,7 @@ def hyperopt_obj_fn(args):
 	'loss_terms':['cross_entropy','regularization'],'l2_decay':l2_decay,'l1_decay':l1_decay}
 
 	rmsprop_params = {'init_method':init_method,'scale_factor':scale_factor,'optim_type':'minibatch',
-	'optim_method':'RMSPROP','batch_size':600,'num_epochs':num_epochs,'learn_rate':learn_rate,'rho':rho}
+	'optim_method':'RMSPROP','batch_size':900,'num_epochs':num_epochs,'learn_rate':learn_rate,'rho':rho}
 	
 	return compute_cv_loss(mln_params,rmsprop_params)
 
