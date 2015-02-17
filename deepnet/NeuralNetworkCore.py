@@ -379,9 +379,9 @@ class Network(object):
 				tr_loss.append(compute_train_loss())
 				if not compute_val_loss is None:
 					val_loss.append(compute_val_loss())
-					print 'Epoch: %s, Training error: %.8f, Validation error: %.8f'%(epoch,tr_loss[-1],val_loss[-1])
-				else:
-					print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss[-1])
+				# 	print 'Epoch: %s, Training error: %.8f, Validation error: %.8f'%(epoch,tr_loss[-1],val_loss[-1])
+				# else:
+				# 	print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss[-1])
 		
 		# training and validation curves - very useful to see how training error evolves	
 		if plotting:

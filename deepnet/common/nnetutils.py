@@ -77,7 +77,7 @@ def split_k_fold_cross_val(X,y,k=10):
 	m = X.shape[0]
 	batch_size = int(m/k) # round down
 	leftover = m - batch_size*k
-	batch_idx = range(0,m+1,m/k)
+	batch_idx = range(0,m+1,batch_size)
 	batch_idx[-1] += leftover
 
 	# split the data 
