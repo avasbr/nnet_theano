@@ -1,33 +1,49 @@
 import theano
 import theano.tensor as T
 
-def regularization(wts,L1_decay=None,L2_decay=None):
-	''' L1 and/or L2 regularization 
+def l1_reg(wts,l1_decay=None):
+	''' l1 regularization
 
 	Parameters:
 	-----------
 	param: wts - weights
 	type: theano shared matrix
 
-	param: L1_decay - L1 decay term
-	type: float
-
-	param: L2_decay - L2 decay term
+	param: l1_decay - l1 decay term
 	type: float
 
 	Returns:
 	--------
 	param: reg_loss - regularization loss term
 	type: theano scalar
-
 	'''
 	
 	reg_loss = 0
-	if L1_decay is not None:
-		reg_loss += 0.5*L1_decay*sum([T.sum(T.abs_(w)) for w in wts])
-	if L2_decay is not None:
-		reg_loss += 0.5*L2_decay*sum([T.sum(w**2) for w in wts])
+	# if l1_decay is None, or some wise-guy sets it to 0.0, no need to compute it
+	if l1_decay is not None or not l1_decay == 0.0:
+		reg_loss += l1_decay*sum([T.sum(T.abs_(w)) for w in wts])
+	return reg_loss
 
+def l2_reg(wts,l2_decay=None):
+	''' l2 regularization
+
+	Parameters:
+	-----------
+	param: wts - weights
+	type: theano shared matrix
+
+	param: l2_decay - l2 decay term
+	type: float
+
+	Returns:
+	--------
+	param: reg_loss - regularization loss term
+	type: theano scalar
+	'''
+	reg_loss = 0
+	# if l1_decay is None, or some wise-guy sets it to 0.0, no need to compute it
+	if l2_decay is not None or not l2_decay == 0.0:
+		reg_loss += l2_decay*sum([T.sum(w**2) for w in wts])
 	return reg_loss
 
 def cross_entropy(y,y_pred):

@@ -582,9 +582,12 @@ class Network(object):
 		else:
 			sys.exit('Must be either cross_entropy or squared_error')
 
-		if 'regularization' in self.loss_terms:
-			L1_decay = self.loss_params.get('l1_decay')
-			L2_decay = self.loss_params.get('l2_decay')
+		if 'l1_reg' in self.loss_terms:
+			l1_decay = self.loss_params.get('l1_decay')
+			optim_loss += nl.l1_reg(wts,l1_decay=l1_decay)
+			
+		if 'l2_reg' in self.loss_terms:
+			l2_decay = self.loss_params.get('l2_decay')
 			optim_loss += nl.regularization(wts,L1_decay=L1_decay,L2_decay=L2_decay)
 			
 		return optim_loss,eval_loss
