@@ -154,28 +154,7 @@ class Network(object):
 			# error
 			sys.exit(ne.opt_type_err())
 
-		self.compile_nnet_functions()
-
 		return self
-
-	def compile_nnet_functions(self,wts=None,bs=None):
-		''' compiles a set of functions needed for all neural networks '''
-
-		if wts is None and bs is None:
-			wts = self.wts_
-			bs = self.bs_
-
-		X = T.matrix()
-		y = T.matrix()
-
-		# computing the loss for an arbitrary test input - this is particularly useful 
-		# when 
-		dummy,eval_loss = self.compute_loss(X,y,wts=wts,bs=bs)
-		self.compute_test_loss = theano.function(
-			inputs=[X,y],
-			outputs=eval_loss,
-			allow_input_downcast=True,
-			mode='FAST_RUN')
 
 	def shared_dataset(self,X,y):
 		''' As per the deep learning tutorial, loading the data all at once (if possible)

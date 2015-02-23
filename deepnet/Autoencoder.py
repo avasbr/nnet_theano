@@ -145,10 +145,11 @@ class Autoencoder(NeuralNetworkCore.Network):
 		self.hidden_act = self.activs[0](T.dot(X_tr,wts[0]) + bs[0])
 		return self.activs[1](T.dot(self.hidden_act,wts[1]) + bs[1])
 
-	def compute_loss(self,X,y,wts=None,bs=None):
+	def compute_loss(self,X,wts=None,bs=None):
 		''' Given inputs, returns the loss at the current state of the model'''
+		
 		# call the super-class function first...		
-		optim_loss, eval_loss = super(Autoencoder,self).compute_loss(X,y,wts,bs)
+		optim_loss, eval_loss = super(Autoencoder,self).compute_loss(X,X,wts,bs)
 
 		# ... and augment with the sparsity term, if needed
 		if 'sparsity' in self.loss_terms:
@@ -177,19 +178,30 @@ class Autoencoder(NeuralNetworkCore.Network):
 
 		X = T.matrix() # features to encode or decode
 
+		# encode the raw data into features defined by the hidden layer
 		self.encode = theano.function(
 			inputs=[X],
 			outputs=self.activs[0](T.dot(X,wts[0])+bs[0]),
 			allow_input_downcast=True)
 		
+		# decode the encoded features back into the raw data representation
 		self.decode = theano.function(
 			inputs=[X],
 			outputs=self.activs[1](T.dot(X,wts[1])+bs[1]),
 			allow_input_downcast=True)
 		
+		# compute the features that maximally activate each of the features of the
+		# hidden layer
 		self.compute_max_activations = theano.function(
 			inputs=[],
 			outputs=wts[0].T/(T.sqrt(T.sum(wts[0]**2,axis=0)).dimshuffle(0,'x')),
+			allow_input_downcast=True)
+
+		# computes the reconstruction loss from encoding and decoding raw data
+		dummy,eval_loss = self.compute_loss(X,wts,bs)
+		self.compute_reconstruction_loss = theano.function(
+			inputs=[X],
+			outputs=eval_loss,
 			allow_input_downcast=True)
 
 	def get_encoding_weights(self):
