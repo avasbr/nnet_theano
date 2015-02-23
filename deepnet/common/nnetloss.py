@@ -63,9 +63,8 @@ def cross_entropy(y,y_pred):
 	type: theano scalar
 
 	'''
-	# not sure if this is more numerically stable or what...
+	# just call theano's version of it, seems reasonable
 	return T.mean(T.nnet.categorical_crossentropy(y_pred,y))
-	#return T.mean(T.sum(-1.0*y*T.log(y_pred),axis=1))
 
 def squared_error(y,y_pred):
 	''' basic squared error loss function
@@ -87,7 +86,7 @@ def squared_error(y,y_pred):
 	return 0.5*T.mean(T.sum((y-y_pred)**2,axis=1))
 
 def sparsity(act,beta=None,rho=None):
-	''' Sparsity term used to enforce sparsity in the activations of hidden units for
+	''' Term used to enforce sparsity in the activations of hidden units for
 		autoencoders 
 
 	Parameters:

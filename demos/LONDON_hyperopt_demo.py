@@ -72,7 +72,6 @@ def hyperopt_obj_fn(args):
 
 	rmsprop_params = {'init_method':init_method,'scale_factor':scale_factor,'optim_type':'minibatch',
 	'optim_method':'RMSPROP','batch_size':900,'num_epochs':num_epochs,'learn_rate':learn_rate,'rho':rho}
-	import pdb; pdb.set_trace()
 	return compute_cv_loss(mln_params,rmsprop_params)
 
 rmsprop_space = (

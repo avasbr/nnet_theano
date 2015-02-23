@@ -378,7 +378,7 @@ class Network(object):
 			
 			if epoch%10 == 0:
 				tr_loss.append(compute_train_loss())
-				if not compute_val_loss is None:
+				if compute_val_loss is not None:
 					val_loss.append(compute_val_loss())
 				# 	print 'Epoch: %s, Training error: %.8f, Validation error: %.8f'%(epoch,tr_loss[-1],val_loss[-1])
 				# else:
