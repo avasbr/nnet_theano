@@ -272,6 +272,7 @@ class Network(object):
 
 		param: num_epochs - the number of full runs through the dataset
 		type: int
+		
 		'''
 		X = T.matrix('X') # input variable
 		y = T.matrix('y') # output variable
@@ -588,7 +589,7 @@ class Network(object):
 			
 		if 'l2_reg' in self.loss_terms:
 			l2_decay = self.loss_params.get('l2_decay')
-			optim_loss += nl.regularization(wts,L1_decay=L1_decay,L2_decay=L2_decay)
+			optim_loss += nl.l2_reg(wts,l2_decay=l2_decay)
 			
 		return optim_loss,eval_loss
 
