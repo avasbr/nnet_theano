@@ -185,7 +185,7 @@ class Network(object):
 		wts,bs = nu.t_reroll(w,self.num_nodes)
 		
 		# get the loss
-		optim_loss,eval_loss = self.compute_loss(X,y,wts=wts,bs=bs)
+		optim_loss = self.compute_optim_loss(X,y,wts=wts,bs=bs)
 	
 		# compute grad
 		params = [p for param in [wts,bs] for p in param] # all model parameters in a list
@@ -257,7 +257,8 @@ class Network(object):
 		y = T.matrix('y') # output variable
 		idx = T.ivector('idx') # integer index
 		
-		optim_loss, eval_loss = self.compute_loss(X,y) # loss functions
+		optim_loss = self.compute_optim_loss(X,y) # optimization loss
+		eval_loss = self.compute_eval_loss(X,y) # evaluation loss
 		params = [p for param in [self.wts_,self.bs_] for p in param] # all model parameters in a list
 		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
 		
@@ -312,7 +313,7 @@ class Network(object):
 				y:y_tr[idx]
 			})
 
-		
+
 		compute_train_loss = theano.function(
 			inputs=[],
 			outputs=eval_loss,
@@ -488,15 +489,15 @@ class Network(object):
 			wts_minus, bs_minus = nu.t_reroll(v_minus,self.num_nodes)
 			
 			# compute the loss for both sides, and then compute the numerical gradient
-			loss_plus,dummy = self.compute_loss(X,Y,wts=wts_plus,bs=bs_plus)
-			loss_minus,dummy = self.compute_loss(X,Y,wts_minus,bs_minus)
+			loss_plus = self.compute_optim_loss(X,Y,wts=wts_plus,bs=bs_plus)
+			loss_minus = self.compute_optim_loss(X,Y,wts_minus,bs_minus)
 			
 			return 1.0*(loss_plus-loss_minus)/(2*eps) # ( E(weights[i]+eps) - E(weights[i]-eps) )/(2*eps)
 
 		compute_ngrad = theano.function(inputs=[v,i,X,Y],outputs=compute_numerical_gradient(v,i,X,Y))
 
 		# 2. compile backprop (theano's autodiff)
-		optim_loss,eval_loss = self.compute_loss(X,Y,wts=wts,bs=bs)
+		optim_loss = self.compute_optim_loss(X,Y,wts=wts,bs=bs)
 		params = [p for param in [wts,bs] for p in param] # all model parameters in a list
 		grad_params = [T.grad(optim_loss,param) for param in params] # gradient of each model param w.r.t training loss
 		grad_w = nu.t_unroll(grad_params[:len(wts)],grad_params[len(wts):]) # gradient of the full weight vector
@@ -515,8 +516,48 @@ class Network(object):
 		cerr = np.mean(np.abs(ngrad-bgrad))
 		assert cerr < 1e-10
 
-	def compute_loss(self,X,y,wts=None,bs=None):
-		''' Given inputs, returns the loss at the current state of the model
+	def compute_eval_loss(self,X,y,wts=None,bs=None):
+		''' Given inputs, returns the evaluation loss at the current state of the model
+
+		Parameters:
+		-----------
+		param: X - training data
+		type: theano matrix
+
+		param: y - training labels
+		type: theano matrix
+
+		param: wts - weights
+		type: theano matrix, optional
+
+		param: bs - biases
+		type: theano matrix, optional
+
+		Returns:
+		--------
+		param: eval_loss - evaluation loss, which doesn't include regularization
+		type: theano scalar
+
+		'''
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
+
+		eval_loss = None # the loss function we can evaluate during validation
+		y_pred = self.fprop(X,wts,bs)
+
+		if 'cross_entropy' in self.loss_terms:
+			eval_loss = nl.cross_entropy(y,y_pred)
+		
+		elif 'squared_error' in self.loss_terms:
+			eval_loss = nl.squared_error(y,y_pred)
+		else:
+			sys.exit('Must be either cross_entropy or squared_error')
+			
+		return eval_loss
+
+	def compute_optim_loss(self,X,y,wts=None,bs=None):
+		''' Given inputs, returns the training loss at the current state of the model
 
 		Parameters:
 		-----------
@@ -536,29 +577,20 @@ class Network(object):
 		--------
 		param: optim_loss - the optimization loss which must be optimized over
 		type: theano scalar
-
-		param: eval_loss - evaluation loss, which doesn't include regularization
-		type: theano scalar
-
 		'''
 		if wts is None and bs is None:
 			wts = self.wts_
 			bs = self.bs_
 
 		y_optim = self.train_fprop(X,wts,bs)
-		y_pred = self.fprop(X,wts,bs)
-
 		optim_loss = None # the loss function which will specifically be optimized over
-		eval_loss = None # the loss function we can evaluate during validation
 
 		if 'cross_entropy' in self.loss_terms:
 			optim_loss = nl.cross_entropy(y,y_optim)
-			eval_loss = nl.cross_entropy(y,y_pred)
 		
 		elif 'squared_error' in self.loss_terms:
 			optim_loss = nl.squared_error(y,y_optim)
-			eval_loss = nl.squared_error(y,y_pred)
-		
+
 		else:
 			sys.exit('Must be either cross_entropy or squared_error')
 
@@ -570,7 +602,7 @@ class Network(object):
 			l2_decay = self.loss_params.get('l2_decay')
 			optim_loss += nl.l2_reg(wts,l2_decay=l2_decay)
 			
-		return optim_loss,eval_loss
+		return optim_loss
 
 	def get_weights_and_biases(self):
 		''' simple function which returns the weights and biases as numpy arrays'''

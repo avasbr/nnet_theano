@@ -68,23 +68,22 @@ class MultilayerNet(NeuralNetworkCore.Network):
 		y_prob = self.fprop(X,wts,bs) # forward propagate through the network
 		pred = T.argmax(y_prob,axis=1) # predict outputs
 
-		# predict the labels of a test set
+		# compile the functions - this is what the user can use to do prediction and scoring
 		self.predict = theano.function(
 			inputs=[X],
-			outputs=pred,
+			outputs=[pred],
+			mode='FAST_RUN',
+			allow_input_downcast=True)
+
+		eval_loss = self.compute_eval_loss(X,y,wts,bs)
+		self.compute_test_loss = theano.function(
+			inputs=[X,y],
+			outputs=eval_loss,
 			mode='FAST_RUN',
 			allow_input_downcast=True)
 		
-		# compute the misclassification score
 		self.score = theano.function(
 			inputs=[X,y],
 			outputs=1.0-T.mean(T.neq(pred,T.argmax(y,axis=1))),
 			mode='FAST_RUN',
 			allow_input_downcast=True)
-
-		dummy,eval_loss = self.compute_loss(X,y,wts=wts,bs=bs)
-		self.compute_test_loss = theano.function(
-			inputs=[X,y],
-			outputs=eval_loss,
-			allow_input_downcast=True,
-			mode='FAST_RUN')

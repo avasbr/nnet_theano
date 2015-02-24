@@ -94,7 +94,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 	def fit(self,X_tr,X_val=None,wts=None,bs=None,**optim_params):
 		''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
 		encoding and decoding functions'''
-		
+
 		super(Autoencoder,self).fit(X_tr,X_tr,X_val=X_val,y_val=X_val,wts=None,bs=None,**optim_params)
 		self.compile_autoencoder_functions()
 
@@ -145,20 +145,23 @@ class Autoencoder(NeuralNetworkCore.Network):
 		self.hidden_act = self.activs[0](T.dot(X_tr,wts[0]) + bs[0])
 		return self.activs[1](T.dot(self.hidden_act,wts[1]) + bs[1])
 
-	def compute_loss(self,X,wts=None,bs=None):
+	def compute_optim_loss(self,X,y,wts=None,bs=None):
 		''' Given inputs, returns the loss at the current state of the model'''
 		
+		if wts is None and bs is None:
+			wts = self.wts_
+			bs = self.bs_
+
 		# call the super-class function first...		
-		optim_loss, eval_loss = super(Autoencoder,self).compute_loss(X,X,wts,bs)
+		optim_loss = super(Autoencoder,self).compute_optim_loss(X,y,wts,bs)
 
 		# ... and augment with the sparsity term, if needed
 		if 'sparsity' in self.loss_terms:
 			beta = self.loss_params.get('beta')
 			rho = self.loss_params.get('rho')
-			optim_loss += nl.sparsity(self.hidden_act,beta=beta,rho=rho) 
+			optim_loss += nl.sparsity(self.hidden_act,beta=beta,rho=rho)
 
-		# no changes to the eval_loss function
-		return optim_loss,eval_loss
+		return optim_loss
 
 	def compile_autoencoder_functions(self,wts=None,bs=None):
 		''' compiles the encoding, decoding, and pre-training functions of the autoencoder 
@@ -198,11 +201,22 @@ class Autoencoder(NeuralNetworkCore.Network):
 			allow_input_downcast=True)
 
 		# computes the reconstruction loss from encoding and decoding raw data
-		dummy,eval_loss = self.compute_loss(X,wts,bs)
+		eval_loss = self.compute_eval_loss(X,X,wts,bs)
 		self.compute_reconstruction_loss = theano.function(
 			inputs=[X],
 			outputs=eval_loss,
 			allow_input_downcast=True)
+
+		# debugging functions
+		
+		# # sparsity loss
+		# A = T.matrix()
+		# b = T.fscalar()
+		# r = T.fscalar()
+		# self.sparsity_loss = theano.function(
+		# 	inputs=[A],
+		# 	outputs=[nl.sparsity(A,beta=b,rho=r)],
+		# 	allow_input_downcast=True)
 
 	def get_encoding_weights(self):
 		''' get the encoding weights from the shared variable '''
