@@ -2,6 +2,10 @@ import theano
 import theano.tensor as T
 import numpy as np
 
+def compute_weight_stats(wt):
+	''' debugging tool'''
+	return float(np.max(wt)),float(np.min(wt)),float(np.mean(wt))
+
 def split_train_val(X,p,y=None):
 	''' splits into training and validation sets '''
 	

@@ -1,5 +1,7 @@
 import theano.tensor as T
+import numpy as np
 
+# theano-based
 def sigmoid(z):
 	''' sigmoid activation function '''
 	return 1./(1.+T.exp(-1.*z))
@@ -19,3 +21,8 @@ def softmax(z):
 def reLU(z):
 	''' rectified linear activation function '''
 	return 0.5*(z + abs(z))
+
+# numpy-based (mainly for debugging)
+def np_sigmoid(z):
+	''' numpy sigmoid activation function '''
+	return 1./(1.+np.exp(-1.*z))

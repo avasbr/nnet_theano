@@ -62,6 +62,7 @@ def compute_cv_loss(mln_params,optim_params):
 
 	return avg_loss # average loss
 
+# TODO: this needs fixing
 def hyperopt_obj_fn(args):
 	''' hyper-opt objective function '''
 	num_hid,learn_rate,l1_decay,l2_decay,activs,scale_factor,init_method,num_epochs,rho = args

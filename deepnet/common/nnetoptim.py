@@ -26,7 +26,7 @@ def sgd(params,grad_params,learn_rate=0.1,max_norm=False,c=5):
 
 	return updates
 
-def rmsprop(params,grad_params,learn_rate=0.001,rho=0.9,eps=1e-6,max_norm=False,c=3):
+def rmsprop(params,grad_params,learn_rate=None,rho=None,eps=1e-6,max_norm=False,c=3):
 	''' Geoff hinton's '"RMSprop" algorithm - RPROP for mini-batches
 	
 	Parameters:
@@ -60,7 +60,7 @@ def rmsprop(params,grad_params,learn_rate=0.001,rho=0.9,eps=1e-6,max_norm=False,
 		# accumulated gradient
 		acc_grad_param = theano.shared(nu.floatX(np.zeros(param.get_value().shape))) # initial value
 		acc_grad_param_ = rho*acc_grad_param + (1-rho)*grad_param**2
-		
+
 		# parameter update
 		param_ = param - learn_rate*grad_param/T.sqrt(acc_grad_param_ + eps)
 		

@@ -286,12 +286,11 @@ class Network(object):
 		m = X_tr.shape[0] # total number of training instances
 		n_batches = int(m/batch_size) # number of batches, based on batch size
 		leftover = m-n_batches*batch_size # batch_size won't divide the data evenly, so get leftover
-		epoch = 0
 
 		# load the full dataset into a shared variable - this is especially useful for test
 		X_tr,y_tr = self.shared_dataset(X_tr,y_tr)
 		
-		# for debugging purposes
+		# debugging functions:
 		y_pred = self.fprop(X)
 		compute_pred = theano.function(
 			inputs=[],
@@ -300,6 +299,24 @@ class Network(object):
 			mode='FAST_RUN',
 			givens={
 				X:X_tr
+			})
+		compute_optim_loss = theano.function(
+			inputs=[idx],
+			outputs=optim_loss,
+			allow_input_downcast=True,
+			mode='FAST_RUN',
+			givens={
+				X:X_tr
+				y:y_tr
+			})
+		compute_grad = theano.function(
+			inputs=[idx],
+			outputs=grad_params,
+			allow_input_downcast=True,
+			mode='FAST_RUN',
+			givens={
+				X:X_tr[idx]
+				y:y_tr[idx]
 			})
 
 		# training function for minibatchs
@@ -312,7 +329,6 @@ class Network(object):
 				X:X_tr[idx],
 				y:y_tr[idx]
 			})
-
 
 		compute_train_loss = theano.function(
 			inputs=[],
@@ -342,8 +358,13 @@ class Network(object):
 		# iterate through the training examples
 		tr_loss = []
 		val_loss = []
+		epoch = 0
+		
+		# debugging
+		nwts = [None,None]
+		nbs = [None,None]
+		loss_before_train = 0.0
 		while epoch < num_epochs:
-			epoch += 1
 			tr_idx = np.random.permutation(m) # randomly shuffle the data indices
 			ss_idx = range(0,m+1,batch_size) # define the start-stop indices
 			ss_idx[-1] += leftover # add the leftovers to the last batch
@@ -353,9 +374,18 @@ class Network(object):
 				
 				n_batch_iter = (epoch-1)*n_batches + idx # total number of batches processed up until now
 				batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
-					
+				
+				# debugging
+				loss_before_train = compute_train_loss()
+
 				train(batch_idx)
+
+				# debugging
+				if np.isnan(compute_train_loss()):
+					import pdb; pdb.set_trace()
+					print 'NaN discovered!!','Epoch:',epoch,'Iter:',idx
 			
+			epoch += 1 # update the epoch count
 			if epoch%10 == 0:
 				tr_loss.append(compute_train_loss())
 				if compute_val_loss is not None:
