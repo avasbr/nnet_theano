@@ -363,7 +363,9 @@ class Network(object):
 		# debugging
 		nwts = [None,None]
 		nbs = [None,None]
-		loss_before_train = 0.0
+		optim_loss_before_train = 0.0
+    optim_grad_before_train = None
+
 		while epoch < num_epochs:
 			tr_idx = np.random.permutation(m) # randomly shuffle the data indices
 			ss_idx = range(0,m+1,batch_size) # define the start-stop indices
@@ -376,7 +378,8 @@ class Network(object):
 				batch_idx = tr_idx[start_idx:stop_idx] # get the next batch
 				
 				# debugging
-				loss_before_train = compute_train_loss()
+				optim_loss_before_train = compute_optim_loss(batch_idx)
+        optim_grad_before_train = compute_grad(batch_idx)
 
 				train(batch_idx)
 
