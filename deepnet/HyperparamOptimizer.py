@@ -1,9 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 import theano
-import sys
-import csv
 from hyperopt import hp, fmin, tpe, Trials, space_eval
 from hyperopt.pyll.stochastic import sample
 from math import log
