@@ -303,34 +303,52 @@ class Network(object):
         # for test
         X_tr, y_tr = self.shared_dataset(X_tr, y_tr)
 
-        # debugging functions:
-        y_pred = self.fprop(X)
-        compute_pred = theano.function(
-            inputs=[],
-            outputs=y_pred,
+        #TODO: need to fix this
+        compute_sparse_loss = theano.function(
+            inputs=[idx],
+            outputs=[nl.sparsity(self.hidden_act, beta=optim_params.beta, rho=optim_params.rho)],
             allow_input_downcast=True,
             mode='FAST_RUN',
             givens={
                 X: X_tr
             })
-        compute_optim_loss = theano.function(
-            inputs=[idx],
-            outputs=optim_loss,
-            allow_input_downcast=True,
-            mode='FAST_RUN',
-            givens={
-                X: X_tr[idx],
-                y: y_tr[idx]
-            })
-        compute_grad = theano.function(
-            inputs=[idx],
-            outputs=grad_params,
-            allow_input_downcast=True,
-            mode='FAST_RUN',
-            givens={
-                X: X_tr[idx],
-                y: y_tr[idx]
-            })
+        # debugging functions:
+        # y_pred = self.fprop(X)
+        # compute_pred = theano.function(
+        #     inputs=[],
+        #     outputs=y_pred,
+        #     allow_input_downcast=True,
+        #     mode='FAST_RUN',
+        #     givens={
+        #         X: X_tr
+        #     })
+        # compute_batch_eval_loss = theano.function(
+        #     inputs=[idx],
+        #     outputs=eval_loss,
+        #     allow_input_downcast=True,
+        #     mode='FAST_RUN',
+        #     givens={
+        #         X: X_tr[idx],
+        #         y: y_tr[idx]
+        #     })
+        # compute_batch_optim_loss = theano.function(
+        #     inputs=[idx],
+        #     outputs=optim_loss,
+        #     allow_input_downcast=True,
+        #     mode='FAST_RUN',
+        #     givens={
+        #         X: X_tr[idx],
+        #         y: y_tr[idx]
+        #     })
+        # compute_batch_grad = theano.function(
+        #     inputs=[idx],
+        #     outputs=grad_params,
+        #     allow_input_downcast=True,
+        #     mode='FAST_RUN',
+        #     givens={
+        #         X: X_tr[idx],
+        #         y: y_tr[idx]
+        #     })
 
         # training function for minibatchs
         train = theano.function(
@@ -389,44 +407,41 @@ class Network(object):
                 batch_idx = tr_idx[start_idx:stop_idx]  # get the next batch
 
                 # debugging
-                optim_loss_before_train = compute_optim_loss(batch_idx)
-        optim_grad_before_train = compute_grad(batch_idx)
+                # optim_loss_before_train = compute_batch_optim_loss(batch_idx)
+                # optim_grad_before_train = compute_batch_grad(batch_idx)
 
-        loss_before = compute_optim_loss(batch_idx)
-        grad_before = compute_grad(batch_idx)
+                train(batch_idx)
 
-        train(batch_idx)
+            # debugging
+            # if np.isnan(compute_train_loss()):
+            #     import pdb
+            #     pdb.set_trace()
+            # print 'NaN discovered!!', 'Epoch:', epoch, 'Iter:', idx
 
-        # debugging
-        # if np.isnan(compute_train_loss()):
-        # import pdb
-        # pdb.set_trace()
-        # print 'NaN discovered!!', 'Epoch:', epoch, 'Iter:', idx
+            epoch += 1  # update the epoch count
+            if epoch % 10 == 0:
+                tr_loss.append(compute_train_loss())
+                if compute_val_loss is not None:
+                    val_loss.append(compute_val_loss())
+                    print 'Epoch: %s, Training error: %.8f, Validation error: %.8f' % (epoch, tr_loss[-1], val_loss[-1])
+                else:
+                    print 'Epoch: %s, Training error: %.8f' % (epoch, tr_loss[-1])
 
-        epoch += 1  # update the epoch count
-        if epoch % 10 == 0:
-            tr_loss.append(compute_train_loss())
-            if compute_val_loss is not None:
-                val_loss.append(compute_val_loss())
-            #   print 'Epoch: %s, Training error: %.8f, Validation error: %.8f'%(epoch,tr_loss[-1],val_loss[-1])
-            # else:
-            #   print 'Epoch: %s, Training error: %.8f'%(epoch,tr_loss[-1])
+            # training and validation curves - very useful to see how training
+            # error evolves
+            if plotting:
+                num_pts = len(tr_loss)
+                pts = [idx * 10 for idx in range(num_pts)]
+                plt.plot(pts, tr_loss, label='Training loss')
+                # sort of a weak way to check if validation losses have been
+                # computed
+                if len(val_loss) > 0:
+                    plt.plot(pts, val_loss, label='Validation loss')
 
-        # training and validation curves - very useful to see how training
-        # error evolves
-        if plotting:
-            num_pts = len(tr_loss)
-            pts = [idx * 10 for idx in range(num_pts)]
-            plt.plot(pts, tr_loss, label='Training loss')
-            # sort of a weak way to check if validation losses have been
-            # computed
-            if len(val_loss) > 0:
-                plt.plot(pts, val_loss, label='Validation loss')
-
-            plt.xlabel('Epochs')
-            plt.ylabel('Loss')
-            plt.legend(loc='upper right')
-            plt.show()
+                plt.xlabel('Epochs')
+                plt.ylabel('Loss')
+                plt.legend(loc='upper right')
+                plt.show()
 
     def dropout(self, act, p=0.5):
         ''' Randomly drops an activation with probability p 

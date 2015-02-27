@@ -166,6 +166,7 @@ class Autoencoder(NeuralNetworkCore.Network):
         # call the super-class function first...
         optim_loss = super(Autoencoder, self).compute_optim_loss(X, y, wts, bs)
 
+        sparse_loss = 0
         # ... and augment with the sparsity term, if needed
         if 'sparsity' in self.loss_terms:
             beta = self.loss_params.get('beta')

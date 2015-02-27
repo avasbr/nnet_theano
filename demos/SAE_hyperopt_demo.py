@@ -188,7 +188,7 @@ hyperspace = {'ae_params':[
 # print best
 
 
-print 'Trying out a setting from one of our tests...'
+print 'Trying out a setting from one of our tests which is known to produce NaN results...'
 
 # sparse autoencoder parameters
 ae_params = {'d':d,'num_hids':[25],'activs':['sigmoid','sigmoid'],
