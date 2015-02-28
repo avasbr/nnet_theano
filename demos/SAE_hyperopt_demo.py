@@ -96,7 +96,7 @@ def show_reconstruction(X,X_r,idx,w=8,h=8):
 
 #------------Hyperopt---------------
 
-data_path = '/home/avasbr/datasets/image_patches/' # path to the data
+data_path = '/home/bhargav/datasets/image_patches' # path to the data
 n = 10000 # number of patches to sample
 I = load_images(data_path)
 X = sample_images(I,n=n)
@@ -198,7 +198,7 @@ ae_params = {'d':d,'num_hids':[25],'activs':['sigmoid','sigmoid'],
 # rmsprop parameters
 rmsprop_params = {'optim_method':'RMSPROP','optim_type':'minibatch',
 'learn_rate':0.7477276197510565,'init_method':'fan-io','scale_factor': 0.08740630845952124,
-'rho':0.11547856267104184, 'num_epochs': 80, 'batch_size':243}
+'rho':0.11547856267104184, 'num_epochs': 80, 'batch_size':1000}
 
 compute_cv_loss(ae_params,rmsprop_params)
 

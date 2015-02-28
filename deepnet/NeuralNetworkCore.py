@@ -303,16 +303,16 @@ class Network(object):
         # for test
         X_tr, y_tr = self.shared_dataset(X_tr, y_tr)
 
-        #TODO: need to fix this
+        # debugging functions:
         compute_sparse_loss = theano.function(
-            inputs=[idx],
-            outputs=[nl.sparsity(self.hidden_act, beta=optim_params.beta, rho=optim_params.rho)],
+            inputs=[],
+            outputs=[
+                nl.sparsity(self.hidden_act, beta=self.loss_params['beta'], rho=self.loss_params['rho'])],
             allow_input_downcast=True,
             mode='FAST_RUN',
             givens={
                 X: X_tr
             })
-        # debugging functions:
         # y_pred = self.fprop(X)
         # compute_pred = theano.function(
         #     inputs=[],
@@ -322,24 +322,41 @@ class Network(object):
         #     givens={
         #         X: X_tr
         #     })
-        # compute_batch_eval_loss = theano.function(
-        #     inputs=[idx],
-        #     outputs=eval_loss,
-        #     allow_input_downcast=True,
-        #     mode='FAST_RUN',
-        #     givens={
-        #         X: X_tr[idx],
-        #         y: y_tr[idx]
-        #     })
-        # compute_batch_optim_loss = theano.function(
-        #     inputs=[idx],
-        #     outputs=optim_loss,
-        #     allow_input_downcast=True,
-        #     mode='FAST_RUN',
-        #     givens={
-        #         X: X_tr[idx],
-        #         y: y_tr[idx]
-        #     })
+        compute_batch_eval_loss = theano.function(
+            inputs=[idx],
+            outputs=eval_loss,
+            allow_input_downcast=True,
+            mode='FAST_RUN',
+            givens={
+                X: X_tr[idx],
+                y: y_tr[idx]
+            })
+        compute_batch_hidden_act = theano.function(
+            inputs=[idx],
+            outputs=self.hidden_act,
+            allow_input_downcast=True,
+            mode='FAST_RUN',
+            givens={
+                X: X_tr[idx]
+            })
+        compute_batch_output_act = theano.function(
+           inputs=[idx],
+           outputs=self.output_act,
+           allow_input_downcast=True,
+           mode='FAST_RUN',
+           givens={
+                X: X_tr[idx]
+           })
+
+        compute_batch_optim_loss = theano.function(
+            inputs=[idx],
+            outputs=optim_loss,
+            allow_input_downcast=True,
+            mode='FAST_RUN',
+            givens={
+                X: X_tr[idx],
+                y: y_tr[idx]
+            })
         # compute_batch_grad = theano.function(
         #     inputs=[idx],
         #     outputs=grad_params,
@@ -407,16 +424,20 @@ class Network(object):
                 batch_idx = tr_idx[start_idx:stop_idx]  # get the next batch
 
                 # debugging
-                # optim_loss_before_train = compute_batch_optim_loss(batch_idx)
-                # optim_grad_before_train = compute_batch_grad(batch_idx)
+                pre_nan_eval_loss = compute_batch_eval_loss(batch_idx)
+                pre_nan_sparse_loss = compute_sparse_loss()
+                pre_nan_optim_loss = compute_batch_optim_loss(batch_idx)
+                pre_nan_hidden_act = compute_batch_hidden_act(batch_idx)
+                pre_nan_output_act = compute_batch_output_act(batch_idx)
+                pre_nan_wts,pre_nan_bs = self.get_weights_and_biases()
+                import pdb
+                pdb.set_trace()
 
                 train(batch_idx)
 
-            # debugging
-            # if np.isnan(compute_train_loss()):
-            #     import pdb
-            #     pdb.set_trace()
-            # print 'NaN discovered!!', 'Epoch:', epoch, 'Iter:', idx
+                # debugging
+                if self.check_nans():
+                    print 'NaN discovered!!', 'Epoch:', epoch, 'Iter:', idx
 
             epoch += 1  # update the epoch count
             if epoch % 10 == 0:
@@ -689,3 +710,13 @@ class Network(object):
         bs = [b.get_value() for b in self.bs_]
 
         return wts, bs
+
+    def check_nans(self):
+        ''' simple function which returns True if any value is NaN in wts or biases '''
+        
+        wts, bs = self.get_weights_and_biases() # poke into the shared variables and get their values
+        nans = 0
+        for wt, b in zip(wts, bs):
+            nans += np.sum(wt) + np.sum(b)
+
+        return np.isnan(nans)

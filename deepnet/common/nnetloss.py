@@ -1,5 +1,6 @@
 import theano
 import theano.tensor as T
+import numpy as np
 
 
 def l1_reg(wts, l1_decay=None):
@@ -118,3 +119,18 @@ def sparsity(act, beta=None, rho=None):
                   * T.log((1 - rho) / (1 - avg_act)))
 
     return sparse_loss
+
+# debugging
+def sparsity_np(act, beta=None, rho=None):
+
+    sparse_loss = 0
+
+    if beta is not None and rho is not None:
+        avg_act = np.mean(act, axis=0)
+        sparse_loss = beta * \
+            np.sum(rho * np.log(rho / avg_act) + (1 - rho)
+                  * np.log((1 - rho) / (1 - avg_act)))
+
+    return sparse_loss
+
+

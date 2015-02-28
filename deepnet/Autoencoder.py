@@ -154,6 +154,7 @@ class Autoencoder(NeuralNetworkCore.Network):
 
         # this is useful to keep around for when we introduce sparsity
         self.hidden_act = self.activs[0](T.dot(X_tr, wts[0]) + bs[0])
+        self.output_act = self.activs[1](T.dot(self.hidden_act,wts[1]) + bs[1])
         return self.activs[1](T.dot(self.hidden_act, wts[1]) + bs[1])
 
     def compute_optim_loss(self, X, y, wts=None, bs=None):
