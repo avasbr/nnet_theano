@@ -198,7 +198,7 @@ ae_params = {'d':d,'num_hids':[25],'activs':['sigmoid','sigmoid'],
 # rmsprop parameters
 rmsprop_params = {'optim_method':'RMSPROP','optim_type':'minibatch',
 'learn_rate':0.7477276197510565,'init_method':'fan-io','scale_factor': 0.08740630845952124,
-'rho':0.11547856267104184, 'num_epochs': 80, 'batch_size':1000}
+'rho':0.11547856267104184, 'num_epochs': 80, 'batch_size':2000}
 
 compute_cv_loss(ae_params,rmsprop_params)
 
