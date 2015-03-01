@@ -116,6 +116,7 @@ def sparsity(act, beta, rho):
 
     # clip so that KL div doesnt' blow up (even if it should...)
     avg_act = T.clip(T.mean(act, axis=0), min_val, max_val)
+    # avg_act = T.mean(act,axis=0)
     sparse_loss = beta * \
         T.sum(rho * T.log(rho / avg_act) + (1 - rho)
               * T.log((1 - rho) / (1 - avg_act)))

@@ -100,7 +100,7 @@ def show_reconstruction(X, X_r, idx, w=8, h=8):
 
 #------------Hyperopt---------------
 
-data_path = '/home/avasbr/datasets/image_patches'  # path to the data
+data_path = '/home/bhargav/datasets/image_patches'  # path to the data
 n = 10000  # number of patches to sample
 I = load_images(data_path)
 X = sample_images(I, n=n)
@@ -166,14 +166,39 @@ def hyperopt_obj_fn(hyperspace):
     rmsprop_params = {'optim_method': 'RMSPROP', 'optim_type': 'minibatch'}
     rmsprop_params.update(sampled_optim_params)
 
+    # lbfgsb parameters
+    lbfgs_params = {'optim_method': 'L-BFGS-B', 'optim_type': 'fullbatch'}
+    lbfgs_params.update(sampled_optim_params)
+
     print 'Sparse Autoencoder parameters'
     print ae_params
     print 'Optim parameters'
-    print rmsprop_params
+    print lbfgs_params
 
-    return compute_cv_loss(ae_params, rmsprop_params)
+    return compute_cv_loss(ae_params, lbfgs_params)
 
 # define the hyperparamater space to search
+# hyperspace = {'ae_params': [
+#     {'l1_reg': hp.choice(
+#         'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
+#     {'l2_reg': hp.choice(
+#         'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+#     {'beta': hp.loguniform(
+#         'beta', log(1e-2), log(10))},
+#     {'sparse_rho': hp.loguniform(
+#         'sparse_rho', log(1e-2), log(1))}
+# ],
+#     'optim_params': [
+#     {'learn_rate': hp.uniform('lr', 0, 1)},
+#     {'rho': hp.uniform('rho', 0, 1)},
+#     {'num_epochs': hp.qloguniform('epochs', log(10), log(1000), 1)},
+#     {'batch_size': hp.quniform('size', 128, 1024, 1)},
+#     {'init_method': hp.choice(
+#         'init', ['gauss', 'fan-io'])},
+#     {'scale_factor': hp.uniform('scale', 0, 1)}
+# ]
+# }
+
 hyperspace = {'ae_params': [
     {'l1_reg': hp.choice(
         'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
@@ -185,8 +210,6 @@ hyperspace = {'ae_params': [
         'sparse_rho', log(1e-2), log(1))}
 ],
     'optim_params': [
-    {'learn_rate': hp.uniform('lr', 0, 1)},
-    {'rho': hp.uniform('rho', 0, 1)},
     {'num_epochs': hp.qloguniform('epochs', log(10), log(1000), 1)},
     {'batch_size': hp.quniform('size', 128, 1024, 1)},
     {'init_method': hp.choice(
@@ -196,7 +219,7 @@ hyperspace = {'ae_params': [
 }
 
 print 'Running hyperopt to determine good hyperparameter settings'
-best = fmin(hyperopt_obj_fn, hyperspace, algo=tpe.suggest,max_evals=100)
+best = fmin(hyperopt_obj_fn, hyperspace, algo=tpe.suggest, max_evals=100)
 print best
 
 # print 'Trying out some failed hyperparameters'
@@ -209,15 +232,15 @@ print best
 #              'optim_type': 'minibatch', 'batch_size': 243, 'optim_method': 'RMSPROP',
 #              'init_method': 'fan-io', 'rho': 0.11547856267104184, 'num_epochs': 80}
 
-# # sparse autoencoder parameters
+# sparse autoencoder parameters
 # ae_params = {'d': d, 'num_hids': [25], 'activs': ['sigmoid', 'sigmoid'],
-#              'loss_terms': ['squared_error', 'l2_reg', 'sparsity'], 'beta': ae_terms['beta'], 
+#              'loss_terms': ['squared_error', 'l2_reg', 'sparsity'], 'beta': ae_terms['beta'],
 #              'rho': ae_terms['rho'], 'l2_decay':ae_terms['l2_decay']}
 
-# # rmsprop parameters
+# rmsprop parameters
 # rmsprop_params = {'optim_method': 'RMSPROP', 'optim_type': 'minibatch',
-#                   'learn_rate': opt_terms['learn_rate'], 'init_method': opt_terms['init_method'], 
-#                   'scale_factor': opt_terms['scale_factor'],'rho': opt_terms['rho'], 'num_epochs': opt_terms['num_epochs'], 
+#                   'learn_rate': opt_terms['learn_rate'], 'init_method': opt_terms['init_method'],
+#                   'scale_factor': opt_terms['scale_factor'],'rho': opt_terms['rho'], 'num_epochs': opt_terms['num_epochs'],
 #                   'batch_size': opt_terms['batch_size']}
 
 # compute_cv_loss(ae_params, rmsprop_params)

@@ -546,8 +546,9 @@ class Network(object):
                 act = activ(T.dot(act, w) + b)
 
         # for numericaly stability
-        act = T.switch(act < 0.00001, 0.00001, act)
-        act = T.switch(act > 0.99999, 0.99999, act)
+        eps = 1e-6
+        act = T.switch(act < eps, eps, act)
+        act = T.switch(act > (1.-eps), (1.-eps), act)
 
         return act
 
