@@ -57,7 +57,7 @@ class Network(object):
 
         # initialize the random number stream
         self.srng = RandomStreams()
-        self.srng.seed(1234)
+        self.srng.seed(np.random.randint(99999))
 
     def set_weights(self, wts=None, bs=None, init_method=None, scale_factor=None, seed=None):
         ''' Initializes the weights and biases of the neural network
@@ -304,14 +304,14 @@ class Network(object):
         X_tr, y_tr = self.shared_dataset(X_tr, y_tr)
 
         # debugging functions:
-        compute_sparse_loss = theano.function(
-            inputs=[],
+        compute_batch_sparse_loss = theano.function(
+            inputs=[idx],
             outputs=[
                 nl.sparsity(self.hidden_act, beta=self.loss_params['beta'], rho=self.loss_params['rho'])],
             allow_input_downcast=True,
             mode='FAST_RUN',
             givens={
-                X: X_tr
+                X: X_tr[idx]
             })
         # y_pred = self.fprop(X)
         # compute_pred = theano.function(
@@ -423,21 +423,23 @@ class Network(object):
                 n_batch_iter = (epoch - 1) * n_batches + idx
                 batch_idx = tr_idx[start_idx:stop_idx]  # get the next batch
 
-                # debugging
-                pre_nan_eval_loss = compute_batch_eval_loss(batch_idx)
-                pre_nan_sparse_loss = compute_sparse_loss()
-                pre_nan_optim_loss = compute_batch_optim_loss(batch_idx)
-                pre_nan_hidden_act = compute_batch_hidden_act(batch_idx)
-                pre_nan_output_act = compute_batch_output_act(batch_idx)
-                pre_nan_wts,pre_nan_bs = self.get_weights_and_biases()
-                import pdb
-                pdb.set_trace()
-
+                # # debugging
+                # pre_nan_eval_loss = compute_batch_eval_loss(batch_idx)
+                # pre_nan_sparse_loss = compute_batch_sparse_loss(batch_idx)
+                # pre_nan_optim_loss = compute_batch_optim_loss(batch_idx)
+                # pre_nan_hidden_act = compute_batch_hidden_act(batch_idx)
+                # pre_nan_output_act = compute_batch_output_act(batch_idx)
+                # pre_nan_wts,pre_nan_bs = self.get_weights_and_biases()
+                
                 train(batch_idx)
 
                 # debugging
-                if self.check_nans():
-                    print 'NaN discovered!!', 'Epoch:', epoch, 'Iter:', idx
+                # if self.check_nans():
+                #     import pdb; pdb.set_trace()
+                #     print 'NaN discovered!!', 'Epoch:', epoch, 'Iter:', idx
+                #     print 'Evaluation loss prior to NaN:',pre_nan_eval_loss
+                #     print 'Sparse loss prior to NaN',pre_nan_sparse_loss
+
 
             epoch += 1  # update the epoch count
             if epoch % 10 == 0:

@@ -3,7 +3,7 @@ import theano.tensor as T
 import numpy as np
 
 
-def l1_reg(wts, l1_decay=None):
+def l1_reg(wts, l1_decay):
     ''' l1 regularization
 
     Parameters:
@@ -21,14 +21,14 @@ def l1_reg(wts, l1_decay=None):
     '''
 
     reg_loss = 0
-    # if l1_decay is None, or some wise-guy sets it to 0.0, no need to compute
-    # it
-    if l1_decay is not None or not l1_decay == 0.0:
+
+    if l1_decay != 0.0:
         reg_loss += l1_decay * sum([T.sum(T.abs_(w)) for w in wts])
+
     return reg_loss
 
 
-def l2_reg(wts, l2_decay=None):
+def l2_reg(wts, l2_decay):
     ''' l2 regularization
 
     Parameters:
@@ -45,10 +45,10 @@ def l2_reg(wts, l2_decay=None):
     type: theano scalar
     '''
     reg_loss = 0
-    # if l1_decay is None, or some wise-guy sets it to 0.0, no need to compute
-    # it
-    if l2_decay is not None or not l2_decay == 0.0:
+
+    if l2_decay != 0.0:
         reg_loss += l2_decay * sum([T.sum(w ** 2) for w in wts])
+
     return reg_loss
 
 
@@ -93,9 +93,9 @@ def squared_error(y, y_pred):
     return 0.5 * T.mean(T.sum((y - y_pred) ** 2, axis=1))
 
 
-def sparsity(act, beta=None, rho=None):
+def sparsity(act, beta, rho):
     ''' Term used to enforce sparsity in the activations of hidden units for
-            autoencoders 
+            autoencoders
 
     Parameters:
     -----------
@@ -110,27 +110,28 @@ def sparsity(act, beta=None, rho=None):
 
     '''
 
-    sparse_loss = 0
+    eps = 1e-6  # for numerical stability
+    max_val = 1. - eps
+    min_val = eps
 
-    if beta is not None and rho is not None:
-        avg_act = T.mean(act, axis=0)
-        sparse_loss = beta * \
-            T.sum(rho * T.log(rho / avg_act) + (1 - rho)
-                  * T.log((1 - rho) / (1 - avg_act)))
-
+    # clip so that KL div doesnt' blow up (even if it should...)
+    avg_act = T.clip(T.mean(act, axis=0), min_val, max_val)
+    sparse_loss = beta * \
+        T.sum(rho * T.log(rho / avg_act) + (1 - rho)
+              * T.log((1 - rho) / (1 - avg_act)))
     return sparse_loss
 
-# debugging
-def sparsity_np(act, beta=None, rho=None):
-
-    sparse_loss = 0
-
-    if beta is not None and rho is not None:
-        avg_act = np.mean(act, axis=0)
-        sparse_loss = beta * \
-            np.sum(rho * np.log(rho / avg_act) + (1 - rho)
-                  * np.log((1 - rho) / (1 - avg_act)))
-
-    return sparse_loss
+# for debugging purposes
 
 
+# def sparsity_np(act, beta=None, rho=None):
+
+#     sparse_loss = 0
+
+#     if beta is not None and rho is not None:
+#         avg_act = np.mean(act, axis=0)
+#         sparse_loss = beta *
+#             np.sum(rho * np.log(rho / avg_act) + (1 - rho)
+#                    * np.log((1 - rho) / (1 - avg_act)))
+
+#     return sparse_loss
