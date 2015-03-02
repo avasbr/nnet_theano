@@ -29,13 +29,28 @@ def split_train_val(X, p, y=None):
 
     return X_tr, X_val
 
+# TODO: we can combine all this crap
+
 
 def t_unroll(wts, bs):
     '''Flattens matrices and concatenates to a vector - need for constructing theano expression graphs'''
-    v = floatX(np.array([]))
+    v = np.array([], dtype=theano.config.floatX)
     for w, b in zip(wts, bs):
         v = T.concatenate((v, T.flatten(w), T.flatten(b)))
     return v
+
+
+def t_unroll_ae(wts, bs, tied_wts=False):
+    ''' Flattens matrices and concatenates to a vector - specifically for autoencoders '''
+
+    # if we have tied weights, this vector will be comprised of a single matrix and two
+    # distinct bias vectors
+    if tied_wts:
+        v = np.array([], type=theano.config.floatX)
+        v = T.concatenate(
+            (v, T.flatten(wts[0]), T.flatten(bs[0]), T.flatten(bs[1])))
+        return v
+    return t_unroll(wts, bs)
 
 
 def t_reroll(v, n_nodes):
@@ -53,6 +68,44 @@ def t_reroll(v, n_nodes):
         idx += b_size
 
     return r_wts, r_bs
+
+
+def t_reroll_ae(v, n_nodes, tied_wts=False):
+    ''' Re-rolls a vector v into the weight matrices, specifically for autoencoders '''
+
+    # if we have tied weights, this vector will be comprised of parameters from
+    # a single weight matrix (the second is transposed), and two distinct bias
+    # vectors
+    if tied_wts:
+        r_wts = [None]  # only one weight matrix...
+        r_bs = [None, None]  # ...but two bias vectors
+        idx = 0
+        row = n_nodes[0]
+        col = n_nodes[1]
+        w_size = row * col
+        b_size = col
+        r_wts[0] = T.reshape(v[idx:idx + w_size], (row, col))
+        idx += w_size
+        r_bs[0] = T.reshape(v[idx:idx + b_size], (col,))
+        idx += b_size
+        r_bs[1] = T.reshape(v[idx:idx + b_size], (col,))
+        return r_wts, r_bs
+
+    # just default to the original
+    return t_reroll(v, n_nodes)
+
+
+def unroll_ae(wts, bs, tied_wts=False):
+    ''' Flattens matrices and concatenates to a vector, specifically for autoencoders '''
+
+    # if we have tied weights, this vector will be comprised of a single matrix and two
+    # distinct bias vectors
+    if tied_wts:
+        v = np.array([], dtype=theano.config.floatX)
+        v = np.concatenate(
+            (v, wts[0].flatten(), bs[0].flatten(), bs[1].flatten()))
+        return v
+    return unroll(wts, bs)
 
 
 def unroll(wts, bs):
@@ -78,6 +131,27 @@ def reroll(v, n_nodes):
         idx += b_size
 
     return r_wts, r_bs
+
+
+def reroll_ae(v, n_nodes, tied_wts=False):
+    ''' Re-rolls a vector v into weight matrices, for autoencoders '''
+
+    if self.tied_wts:
+        r_wts = [None]  # only one weight matrix...
+        r_bs = [None, None]  # ...but two bias vectors
+        idx = 0
+        row = n_nodes[0]
+        col = n_nodes[1]
+        w_size = row * col
+        b_size = col
+        r_wts[0] = np.reshape(v[idx:idx + w_size], (row, col))
+        idx += w_size
+        r_bs[0] = np.reshape(v[idx:idx + b_size], (col,))
+        idx += b_size
+        r_bs[1] = np.reshape(v[idx:idx + b_size], (col,))
+        return r_wts, r_bs
+
+    return reroll(v, n_nodes)
 
 
 def floatX(X):

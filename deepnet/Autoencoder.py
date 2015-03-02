@@ -1,5 +1,6 @@
 import numpy as np
 from deepnet import NeuralNetworkCore
+from deepnet.common import nnetutils as nu
 from deepnet.common import nnetloss as nl
 import theano
 import theano.tensor as T
@@ -24,6 +25,11 @@ class Autoencoder(NeuralNetworkCore.Network):
         self.encode = None
         self.tied_wts = tied_wts
 
+        # this adds an extra constraint where the decoding weights are simply
+        # the transpose of the encoding weights
+        if self.tied_wts:
+            self.num_nodes = [d] + num_hids
+
     def set_weights(self, wts=None, bs=None, init_method=None, scale_factor=None, seed=None):
         ''' Initializes the weights and biases of the neural network 
 
@@ -42,31 +48,29 @@ class Autoencoder(NeuralNetworkCore.Network):
         # of one another
 
         if self.tied_wts:
-            self.num_nodes = [d] + num_hids
 
             if seed is not None:
                 np.random.seed(seed=seed)
 
             # weights and biases
             if wts is None and bs is None:
-                wts = [None, None]
+                wts = [None]
                 bs = [None, None]
 
-                if method == 'gauss':
-                    wts[0] = scale_factor * np.random.randn(d, num_hids[0])
-                    # this is a shallow transpose (changing [0] will change
-                    # this as well)
-                    wts[1] = wts[0].T
-                    bs[0] = np.zeros(num_hids[0])
-                    bs[1] = np.zeros(d)
+                if init_method == 'gauss':
+                    wts[0] = scale_factor * \
+                        np.random.randn(self.num_nodes[0], self.num_nodes[0])
+                    bs[0] = np.zeros(self.num_nodes[1])
+                    bs[1] = np.zeros(self.num_nodes[0])
 
-                if method == 'fan-io':
-                    v = np.sqrt(1. * scale_factor / (d + num_hids[0] + 1))
+                if init_method == 'fan-io':
+                    v = np.sqrt(
+                        1. * scale_factor / (self.num_nodes[0] + self.num_nodes[1] + 1))
                     wts[0] = scale_factor * v * \
-                        np.random.rand(d, num_hids[0] - v)
-                    wts[1] = wts[0].T
-                    bs[0] = np.zeros(num_hids[0])
-                    bs[1] = np.zeros(d)
+                        np.random.rand(
+                            self.num_nodes[0], self.num_nodes[1] - v)
+                    bs[0] = np.zeros(self.num_nodes[1])
+                    bs[1] = np.zeros(self.num_nodes[0])
             else:
                 assert isinstance(wts, list)
                 assert isinstance(bs, list)
@@ -104,9 +108,87 @@ class Autoencoder(NeuralNetworkCore.Network):
     def fit(self, X_tr, X_val=None, wts=None, bs=None, **optim_params):
         ''' calls the fit function of the super class (NeuralNetworkCore) and also compiles the 
         encoding and decoding functions'''
+
         super(Autoencoder, self).fit(
             X_tr, X_tr, X_val=X_val, y_val=X_val, wts=None, bs=None, **optim_params)
         self.compile_autoencoder_functions()
+
+    def fullbatch_optimize(self, X_tr, y_tr, X_val=None, y_val=None, num_epochs=None, **optim_params):
+        ''' Full-batch optimization using scipy's L-BFGS-B and CG; this function is duplicated for 
+        autoencoders, since the option of tied-weights makes the unrolling/rerolling a bit different
+
+        Parameters:
+        -----------
+        param: X_tr - training data
+        type: theano matrix
+
+        param: y_tr - training labels
+        type: theano matrix
+
+        param: num_epochs - the number of full runs through the dataset
+        type: int
+        '''
+
+        X = T.matrix('X')  # input variable
+        y = T.matrix('y')  # output variable
+        w = T.vector('w')  # weight vector
+
+        # reshape w into wts/biases, taking note of whether tied weights are
+        # being used or not
+        wts, bs = nu.t_reroll_ae(w, self.num_nodes, self.tied_wts)
+
+        # get the loss
+        optim_loss = self.compute_optim_loss(X, y, wts=wts, bs=bs)
+
+        # compute grad
+        params = [p for param in [wts, bs]
+                  for p in param]  # all model parameters in a list
+        # gradient of each model param w.r.t training loss
+        grad_params = [T.grad(optim_loss, param) for param in params]
+        
+        # gradient of the full weight vector
+        grad_w = nu.t_unroll_ae(
+            grad_params[:len(wts)], grad_params[len(wts):], self.tied_wts)
+
+        compute_loss_grad_from_vector = theano.function(
+            inputs=[w, X, y],
+            outputs=[optim_loss, grad_w],
+            allow_input_downcast=True)
+
+        compute_loss_from_vector = theano.function(
+            inputs=[w, X, y],
+            outputs=[optim_loss],
+            allow_input_downcast=True)
+
+        # initial value for the weight vector
+        wts0 = [wt.get_value() for wt in self.wts_]
+        bs0 = [b.get_value() for b in self.bs_]
+        w0 = nu.unroll_ae(wts0, bs0, self.tied_wts)
+
+        # print 'Checking gradients for fun...'
+        # self.check_gradients(X_tr,y_tr,wts0,bs0)
+        # print 'Pre-training loss:',compute_loss_from_vector(w0,X_tr,y_tr)
+
+        try:
+            optim_method = optim_params.pop('optim_method')
+        except KeyError:
+            sys.exit(ne.method_err())
+
+        # very annoying.
+        if optim_method == 'L-BFGS-B' and theano.config.floatX == 'float32':
+            sys.exit('Sorry, L-BFGS-B only works with float64')
+
+        # scipy optimizer
+        wf = sp.optimize.minimize(compute_loss_grad_from_vector, w0, args=(X_tr, y_tr), method=optim_method, jac=True,
+                                  options={'maxiter': num_epochs})
+
+        # print 'Post-training loss',compute_loss_from_vector(wf.x,X_tr,y_tr)
+
+        # re-roll this back into weights and biases
+        wts, bs = nu.reroll_ae(wf.x, self.num_nodes, self.tied_wts)
+
+        self.wts_ = [theano.shared(nu.floatX(wt)) for wt in wts]
+        self.bs_ = [theano.shared(nu.floatX(b)) for b in bs]
 
     def train_fprop(self, X_tr, wts=None, bs=None):
         ''' Performs forward propagation for training, which could be different from
@@ -124,6 +206,10 @@ class Autoencoder(NeuralNetworkCore.Network):
 
             self.hidden_act = self.activs[0](T.dot(self.corrupt_input(
                 X_tr, corrupt_p, corrupt_type), wts[0]) + bs[0])  # compute the first activation
+
+            if self.tied_wts:
+                return self.activs[1](T.dot(self.hidden_act, wts[0].T) + bs[1])
+
             return self.activs[1](T.dot(self.hidden_act, wts[1]) + bs[1])
         else:
             return self.fprop(X_tr, wts, bs)
@@ -152,9 +238,14 @@ class Autoencoder(NeuralNetworkCore.Network):
             wts = self.wts_
             bs = self.bs_
 
-        # this is useful to keep around for when we introduce sparsity
+        # debugging
+        # self.output_act = self.activs[1](T.dot(self.hidden_act,wts[1]) + bs[1])
+
         self.hidden_act = self.activs[0](T.dot(X_tr, wts[0]) + bs[0])
-        self.output_act = self.activs[1](T.dot(self.hidden_act,wts[1]) + bs[1])
+
+        if self.tied_wts:
+            return self.activs[1](T.dot(self.hidden_act, wts[0].T) + bs[1])
+
         return self.activs[1](T.dot(self.hidden_act, wts[1]) + bs[1])
 
     def compute_optim_loss(self, X, y, wts=None, bs=None):

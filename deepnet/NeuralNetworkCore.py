@@ -304,15 +304,15 @@ class Network(object):
         X_tr, y_tr = self.shared_dataset(X_tr, y_tr)
 
         # debugging functions:
-        compute_batch_sparse_loss = theano.function(
-            inputs=[idx],
-            outputs=[
-                nl.sparsity(self.hidden_act, beta=self.loss_params['beta'], rho=self.loss_params['rho'])],
-            allow_input_downcast=True,
-            mode='FAST_RUN',
-            givens={
-                X: X_tr[idx]
-            })
+        # compute_batch_sparse_loss = theano.function(
+        #     inputs=[idx],
+        #     outputs=[
+        #         nl.sparsity(self.hidden_act, beta=self.loss_params['beta'], rho=self.loss_params['rho'])],
+        #     allow_input_downcast=True,
+        #     mode='FAST_RUN',
+        #     givens={
+        #         X: X_tr[idx]
+        #     })
         # y_pred = self.fprop(X)
         # compute_pred = theano.function(
         #     inputs=[],
@@ -322,41 +322,40 @@ class Network(object):
         #     givens={
         #         X: X_tr
         #     })
-        compute_batch_eval_loss = theano.function(
-            inputs=[idx],
-            outputs=eval_loss,
-            allow_input_downcast=True,
-            mode='FAST_RUN',
-            givens={
-                X: X_tr[idx],
-                y: y_tr[idx]
-            })
-        compute_batch_hidden_act = theano.function(
-            inputs=[idx],
-            outputs=self.hidden_act,
-            allow_input_downcast=True,
-            mode='FAST_RUN',
-            givens={
-                X: X_tr[idx]
-            })
-        compute_batch_output_act = theano.function(
-           inputs=[idx],
-           outputs=self.output_act,
-           allow_input_downcast=True,
-           mode='FAST_RUN',
-           givens={
-                X: X_tr[idx]
-           })
-
-        compute_batch_optim_loss = theano.function(
-            inputs=[idx],
-            outputs=optim_loss,
-            allow_input_downcast=True,
-            mode='FAST_RUN',
-            givens={
-                X: X_tr[idx],
-                y: y_tr[idx]
-            })
+        # compute_batch_eval_loss = theano.function(
+        #     inputs=[idx],
+        #     outputs=eval_loss,
+        #     allow_input_downcast=True,
+        #     mode='FAST_RUN',
+        #     givens={
+        #         X: X_tr[idx],
+        #         y: y_tr[idx]
+        #     })
+        # compute_batch_hidden_act = theano.function(
+        #     inputs=[idx],
+        #     outputs=self.hidden_act,
+        #     allow_input_downcast=True,
+        #     mode='FAST_RUN',
+        #     givens={
+        #         X: X_tr[idx]
+        #     })
+        # compute_batch_output_act = theano.function(
+        #    inputs=[idx],
+        #    outputs=self.output_act,
+        #    allow_input_downcast=True,
+        #    mode='FAST_RUN',
+        #    givens={
+        #         X: X_tr[idx]
+        #    })
+        # compute_batch_optim_loss = theano.function(
+        #     inputs=[idx],
+        #     outputs=optim_loss,
+        #     allow_input_downcast=True,
+        #     mode='FAST_RUN',
+        #     givens={
+        #         X: X_tr[idx],
+        #         y: y_tr[idx]
+        #     })
         # compute_batch_grad = theano.function(
         #     inputs=[idx],
         #     outputs=grad_params,

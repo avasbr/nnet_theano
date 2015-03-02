@@ -1,3 +1,4 @@
+# Currently very much a work in progress
 import numpy as np
 import matplotlib.pyplot as plt
 import theano
