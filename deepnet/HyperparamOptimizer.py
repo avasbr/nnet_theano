@@ -36,7 +36,7 @@ class HyperparamOptimizer():
             for i in range(num_layers):
                 activs[i] = hp.choice('activ_%i' % i, ['sigmoid', 'reLU'])
                 num_hids[i] = hp.qloguniform(
-                    'num_hid_%i' % i, log(10), log(1000), 1)
+                    'num_hid_%i' % i, log(10), log(5000), 1)
 
         # define the hyperparamater space to search
         hyperspace = {'mln_params': [
@@ -57,7 +57,7 @@ class HyperparamOptimizer():
             {'learn_rate': hp.uniform('learn_rate', 0, 1)},
             {'rho': hp.uniform('rho', 0, 1)},
             {'num_epochs': hp.qloguniform(
-                'num_epochs', log(10), log(1000), 1)},
+                'num_epochs', log(10), log(5000), 1)},
             {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
             {'init_method': hp.choice(
                 'init_method', ['gauss', 'fan-io'])},
