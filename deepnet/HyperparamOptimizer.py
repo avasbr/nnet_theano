@@ -57,7 +57,7 @@ class HyperparamOptimizer():
             {'learn_rate': hp.uniform('learn_rate', 0, 1)},
             {'rho': hp.uniform('rho', 0, 1)},
             {'num_epochs': hp.qloguniform(
-                'num_epochs', log(10), log(5000), 1)},
+                'num_epochs', log(10), log(1e4), 1)},
             {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
             {'init_method': hp.choice(
                 'init_method', ['gauss', 'fan-io'])},
