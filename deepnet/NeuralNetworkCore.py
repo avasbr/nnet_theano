@@ -713,6 +713,7 @@ class Network(object):
 
         return wts, bs
 
+    # debugging
     def check_nans(self):
         ''' simple function which returns True if any value is NaN in wts or biases '''
         
