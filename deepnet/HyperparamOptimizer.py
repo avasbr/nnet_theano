@@ -36,7 +36,7 @@ class HyperparamOptimizer():
             for i in range(num_layers):
                 activs[i] = hp.choice('activ_%i' % i, ['sigmoid', 'reLU'])
                 num_hids[i] = hp.qloguniform(
-                    'num_hid_%i' % i, log(10), log(5000), 1)
+                    'num_hid_%i' % i, log(10), log(3000), 1)
 
         # define the hyperparamater space to search
         hyperspace = {'mln_params': [
@@ -53,7 +53,7 @@ class HyperparamOptimizer():
             {'learn_rate': hp.uniform('learn_rate', 0, 1)},
             {'rho': hp.uniform('rho', 0, 1)},
             {'num_epochs': hp.qloguniform(
-                'num_epochs', log(1e2), log(5000), 1)},
+                'num_epochs', log(1e2), log(2000), 1)},
             {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
             {'init_method': hp.choice(
                 'init_method', ['gauss', 'fan-io'])},
@@ -110,6 +110,19 @@ class HyperparamOptimizer():
         }
         return hyperspace
 
+    def compute_val_loss(self,mln_params,optim_params,p=0.8):
+        ''' Uses a single train/val split to compute the loss '''
+
+        X_tr, y_tr, X_val, y_val = nu.split_train_val(self.X,p,y=self.y)
+        nnet = mln.MultilayerNet(**mln_params)
+        nnet.fit(X_tr,y_tr,**optim_params)
+
+        val_loss = float(nnet.compute_test_loss(X_val,y_val))
+        print 'Validation loss:',val_loss
+
+        return val_loss
+
+
     def compute_cv_loss(self, mln_params, optim_params, k_cv=5):
         ''' Uses k-fold cross-val to compute the average loss '''
 
@@ -119,7 +132,7 @@ class HyperparamOptimizer():
         val_loss = 0.  # needed to accumulate the validation loss
 
         for i, split in enumerate(cv_splits):
-            print 'Cross-validation iteration:', i
+            print 'Cross-validation iteration:', i+1
             # get the training and validation for this split
             X_tr, y_tr, X_val, y_val = split
             # initialize the neural network
@@ -180,7 +193,8 @@ class HyperparamOptimizer():
         print 'Optimization parameters'
         print rmsprop_params
 
-        return self.compute_cv_loss(mln_params, rmsprop_params)
+        return self.compute_val_loss(mln_params,rmsprop_params)
+        # return self.compute_cv_loss(mln_params, rmsprop_params)
 
     def hyperopt_obj_fn(self, hyperspace):
         ''' objective function that takes in a hyperspace and returns a cost/value '''
@@ -235,13 +249,14 @@ class HyperparamOptimizer():
         print 'Optimization parameters'
         print rmsprop_params
 
-        return self.compute_cv_loss(mln_params, rmsprop_params)
+        return self.compute_val_loss(mln_params, rmsprop_params)
+        # return self.compute_cv_loss(mln_params, rmsprop_params)
 
-    def run_hyperopt(self, k_cv=5):
+    def run_hyperopt(self):
         ''' convenience function for running hyperopt '''
 
         hyperspace_2 = self.get_hyperspace_2()
         best = fmin(self.hyperopt_obj_fn_2, hyperspace_2, algo=tpe.suggest,
-                    max_evals=200)
+                    max_evals=100)
 
         return best

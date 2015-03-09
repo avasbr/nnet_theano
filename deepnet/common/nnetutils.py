@@ -169,6 +169,8 @@ def pretty_print(header, params):
 def split_k_fold_cross_val(X, k_cv=5, y=None):
     ''' Returns a list of tuples consisting of cross-val indices '''
 
+    assert k_cv > 1  # having '1' fold doesn't make any sense
+
     # set up the indices
     m = X.shape[0]
     batch_size = int(m / k_cv)  # round down
@@ -181,7 +183,7 @@ def split_k_fold_cross_val(X, k_cv=5, y=None):
     cross_val_splits = [None] * k_cv
     for i, (start, end) in enumerate(zip(batch_idx[:-1], batch_idx[1:])):
         te_idx = idx[start:end]  # held-out slice
-        tr_idx = idx[0:start] + idx[end:]  # training slice
+        tr_idx = idx[:start] + idx[end:]  # training slice
 
         # set the training/held-out data for this data
         X_tr = X[tr_idx]
