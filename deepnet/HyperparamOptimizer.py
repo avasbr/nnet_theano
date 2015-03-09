@@ -26,9 +26,10 @@ class HyperparamOptimizer():
 
         # Multilayer nnet spaces
         max_layers = 4
-
+        hyperspace = []
         # sets up the neural network
         for num_layers in range(1, max_layers):
+            nnet_name = 'nnet%i' % (num_layers + 1)
             activs = [None] * num_layers
             num_hids = [None] * num_layers
 
@@ -38,30 +39,31 @@ class HyperparamOptimizer():
                 num_hids[i] = hp.qloguniform(
                     'num_hid_%i' % i, log(10), log(3000), 1)
 
-        # define the hyperparamater space to search
-        hyperspace = {'mln_params': [
-            {'num_hids': num_hids},
-            {'activs': activs},
-            {'input_p': hp.uniform('ip', 0, 1)},
-            {'hidden_p': hp.uniform('hp', 0, 1)},
-            {'l1_reg': hp.choice(
-                'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-            {'l2_reg': hp.choice(
-                'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
-        ],
-            'optim_params': [
-            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-            {'rho': hp.uniform('rho', 0, 1)},
-            {'num_epochs': hp.qloguniform(
-                'num_epochs', log(1e2), log(2000), 1)},
-            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-            {'init_method': hp.choice(
-                'init_method', ['gauss', 'fan-io'])},
-            {'scale_factor': hp.uniform(
-                'scale_factor', 0, 1)}
-        ]
-        }
-        return hyperspace
+            # define the hyperparamater space to search
+            hyperspace.append({'mln_params': [
+                {'num_hids': num_hids},
+                {'activs': activs},
+                {'input_p': hp.uniform('ip', 0, 1)},
+                {'hidden_p': hp.uniform('hp', 0, 1)},
+                {'l1_reg': hp.choice(
+                    'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
+                {'l2_reg': hp.choice(
+                    'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+                ],
+                'optim_params': [
+                {'learn_rate': hp.uniform('learn_rate', 0, 1)},
+                {'rho': hp.uniform('rho', 0, 1)},
+                {'num_epochs': hp.qloguniform(
+                    'num_epochs', log(1e2), log(2000), 1)},
+                {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
+                {'init_method': hp.choice(
+                    'init_method', ['gauss', 'fan-io'])},
+                {'scale_factor': hp.uniform(
+                    'scale_factor', 0, 1)}
+                ]
+            })
+        full_space = hp.choice('nnet_set', [hyperspace[i - 1] for i in range(1, max_layers)])
+        return full_space
 
     def get_hyperspace(self):
         ''' defines the hyperspace and return it; all modifications should go here. there really
@@ -110,15 +112,15 @@ class HyperparamOptimizer():
         }
         return hyperspace
 
-    def compute_val_loss(self,mln_params,optim_params,p=0.8):
+    def compute_val_loss(self, mln_params, optim_params, p=0.8):
         ''' Uses a single train/val split to compute the loss '''
 
-        X_tr, y_tr, X_val, y_val = nu.split_train_val(self.X,p,y=self.y)
+        X_tr, y_tr, X_val, y_val = nu.split_train_val(self.X, p, y=self.y)
         nnet = mln.MultilayerNet(**mln_params)
-        nnet.fit(X_tr,y_tr,**optim_params)
+        nnet.fit(X_tr, y_tr, **optim_params)
 
-        val_loss = float(nnet.compute_test_loss(X_val,y_val))
-        print 'Validation loss:',val_loss
+        val_loss = float(nnet.compute_test_loss(X_val, y_val))
+        print 'Validation loss:', val_loss
 
         return val_loss
 
@@ -132,7 +134,7 @@ class HyperparamOptimizer():
         val_loss = 0.  # needed to accumulate the validation loss
 
         for i, split in enumerate(cv_splits):
-            print 'Cross-validation iteration:', i+1
+            print 'Cross-validation iteration:', i + 1
             # get the training and validation for this split
             X_tr, y_tr, X_val, y_val = split
             # initialize the neural network
@@ -193,7 +195,7 @@ class HyperparamOptimizer():
         print 'Optimization parameters'
         print rmsprop_params
 
-        return self.compute_val_loss(mln_params,rmsprop_params)
+        return self.compute_val_loss(mln_params, rmsprop_params)
         # return self.compute_cv_loss(mln_params, rmsprop_params)
 
     def hyperopt_obj_fn(self, hyperspace):
