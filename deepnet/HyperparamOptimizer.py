@@ -41,25 +41,25 @@ class HyperparamOptimizer():
 
                 # define the hyperparamater space to search
                 hyperspace.append({'mln_params': [
-                    {'num_hids': num_hids},
-                    {'activs': activs},
-                    {'input_p': hp.uniform('ip_%i%i'%(num_layers,i), 0, 1)},
-                    {'hidden_p': hp.uniform('hp_%i%i'%(num_layers,i), 0, 1)},
-                    {'l1_reg': hp.choice(
+                    {'num_hids_%i%i'%(num_layers,i): num_hids},
+                    {'activs_%i%i'%(num_layers,i): activs},
+                    {'input_p_%i%i'%(num_layers,i): hp.uniform('ip_%i%i'%(num_layers,i), 0, 1)},
+                    {'hidden_p_%i%i'%(num_layers,i): hp.uniform('hp_%i%i'%(num_layers,i), 0, 1)},
+                    {'l1_reg_%i%i'%(num_layers,i): hp.choice(
                         'l1_lambda_%i%i'%(num_layers,i), [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-                    {'l2_reg': hp.choice(
+                    {'l2_reg_%i%i'%(num_layers,i): hp.choice(
                         'l2_lambda_%i%i'%(num_layers,i), [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
                 ],
-                    'optim_params': [
-                    {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-                    {'rho': hp.uniform('rho', 0, 1)},
-                    {'num_epochs': hp.qloguniform(
-                        'num_epochs', log(1e2), log(2000), 1)},
-                    {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-                    {'init_method': hp.choice(
-                        'init_method', ['gauss', 'fan-io'])},
-                    {'scale_factor': hp.uniform(
-                        'scale_factor', 0, 1)}
+                    'optim_params_%i%i'%(num_layers,i): [
+                    {'learn_rate_%i%i'%(num_layers,i): hp.uniform('learn_rate_%i%i'%(num_layers,i), 0, 1)},
+                    {'rho_%i%i'%(num_layers,i): hp.uniform('rho_%i%i'%(num_layers,i), 0, 1)},
+                    {'num_epochs_%i%i'%(num_layers,i): hp.qloguniform(
+                        'num_epochs_%i%i'%(num_layers,i), log(1e2), log(2000), 1)},
+                    {'batch_size_%i%i'%(num_layers,i): hp.quniform('batch_size_%i%i'%(num_layers,i), 128, 1024, 1)},
+                    {'init_method_%i%i'%(num_layers,i): hp.choice(
+                        'init_method_%i%i'%(num_layers,i), ['gauss', 'fan-io'])},
+                    {'scale_factor_%i%i'%(num_layers,i): hp.uniform(
+                        'scale_factor_%i%i'%(num_layers,i), 0, 1)}
                 ]
                 })
         full_space = hp.choice('nnet_set',[hyperspace[i-1] for i in range(1,max_layers)])
