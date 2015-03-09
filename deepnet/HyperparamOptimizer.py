@@ -26,44 +26,46 @@ class HyperparamOptimizer():
 
         # Multilayer nnet spaces
           # Multilayer nnet spaces
-        max_layers = 4
-        hyperspace = []
+        max_layers = 3
+
         # sets up the neural network
-        for num_layers in range(1, max_layers):
-            activs = [None] * num_layers
-            num_hids = [None] * num_layers
+        nnets = [None]*max_layers
+
+        for num_layers in range(0, max_layers):
+            activs = [None] * (num_layers+1)
+            num_hids = [None] * (num_layers+1)
 
             # set the activation function choice per layer
-            for i in range(num_layers):
-                activs[i] = hp.choice('activ_%i%i' %(num_layers,i), ['sigmoid', 'reLU'])
+            for i in range(num_layers+1):
+                activs[i] = hp.choice('activ_%i%i'%(num_layers,i), ['sigmoid', 'reLU'])
                 num_hids[i] = hp.qloguniform(
-                    'num_hid_%i%i' %(num_layers,i), log(10), log(3000), 1)
+                    'num_hid_%i%i'%(num_layers,i), log(10), log(3000), 1)
+            
+            nnets[num_layers] = (num_hids,activs)
 
-                # define the hyperparamater space to search
-                hyperspace.append({'mln_params_%i%i'%(num_layers,i): [
-                    {'num_hids_%i%i'%(num_layers,i): num_hids},
-                    {'activs_%i%i'%(num_layers,i): activs},
-                    {'input_p_%i%i'%(num_layers,i): hp.uniform('ip_%i%i'%(num_layers,i), 0, 1)},
-                    {'hidden_p_%i%i'%(num_layers,i): hp.uniform('hp_%i%i'%(num_layers,i), 0, 1)},
-                    {'l1_reg_%i%i'%(num_layers,i): hp.choice(
-                        'l1_lambda_%i%i'%(num_layers,i), [None, hp.loguniform('l1_decay_%i%i'%(num_layers,i), log(1e-5), log(10))])},
-                    {'l2_reg_%i%i'%(num_layers,i): hp.choice(
-                        'l2_lambda_%i%i'%(num_layers,i), [None, hp.loguniform('l2_decay_%i%i'%(num_layers,i), log(1e-5), log(10))])},
-                ],
-                    'optim_params_%i%i'%(num_layers,i): [
-                    {'learn_rate_%i%i'%(num_layers,i): hp.uniform('learn_rate_%i%i'%(num_layers,i), 0, 1)},
-                    {'rho_%i%i'%(num_layers,i): hp.uniform('rho_%i%i'%(num_layers,i), 0, 1)},
-                    {'num_epochs_%i%i'%(num_layers,i): hp.qloguniform(
-                        'num_epochs_%i%i'%(num_layers,i), log(1e2), log(2000), 1)},
-                    {'batch_size_%i%i'%(num_layers,i): hp.quniform('batch_size_%i%i'%(num_layers,i), 128, 1024, 1)},
-                    {'init_method_%i%i'%(num_layers,i): hp.choice(
-                        'init_method_%i%i'%(num_layers,i), ['gauss', 'fan-io'])},
-                    {'scale_factor_%i%i'%(num_layers,i): hp.uniform(
-                        'scale_factor_%i%i'%(num_layers,i), 0, 1)}
-                ]
-                })
-        full_space = hp.choice('nnet_set',[hyperspace[i-1] for i in range(1,max_layers)])
-        return full_space
+        # define the hyperparamater space to search
+        hyperspace = ({'mln_params': [
+            {'arch': hp.choice('arch',nnets)},
+            {'input_p': hp.uniform('ip', 0, 1)},
+            {'hidden_p': hp.uniform('hp', 0, 1)},
+            {'l1_reg': hp.choice(
+                'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
+            {'l2_reg': hp.choice(
+                'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+        ],
+            'optim_params': [
+            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
+            {'rho': hp.uniform('rho', 0, 1)},
+            {'num_epochs': hp.qloguniform(
+                'num_epochs', log(1e2), log(2000), 1)},
+            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
+            {'init_method': hp.choice(
+                'init_method', ['gauss', 'fan-io'])},
+            {'scale_factor': hp.uniform(
+                'scale_factor', 0, 1)}
+        ]
+        })
+    return hyperspace
 
     def get_hyperspace(self):
         ''' defines the hyperspace and return it; all modifications should go here. there really
@@ -83,33 +85,33 @@ class HyperparamOptimizer():
                 num_hids[i] = hp.qloguniform(
                     'num_hid_%i' % i, log(10), log(5000), 1)
 
-        # define the hyperparamater space to search
-        hyperspace = {'mln_params': [
-            {'num_hids': num_hids},
-            {'activs': activs},
-            {'dropout': hp.choice('dropout', [
-                None,
-                {'input_p': hp.uniform(
-                    'ip', 0, 1), 'hidden_p': hp.uniform('hp', 0, 1)}
-            ])
-            },
-            {'l1_reg': hp.choice(
-                'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-            {'l2_reg': hp.choice(
-                'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
-        ],
-            'optim_params': [
-            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-            {'rho': hp.uniform('rho', 0, 1)},
-            {'num_epochs': hp.qloguniform(
-                'num_epochs', log(10), log(1e4), 1)},
-            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-            {'init_method': hp.choice(
-                'init_method', ['gauss', 'fan-io'])},
-            {'scale_factor': hp.uniform(
-                'scale_factor', 0, 1)}
-        ]
-        }
+            # define the hyperparamater space to search
+            hyperspace = {'mln_params': [
+                {'num_hids': num_hids},
+                {'activs': activs},
+                {'dropout': hp.choice('dropout', [
+                    None,
+                    {'input_p': hp.uniform(
+                        'ip', 0, 1), 'hidden_p': hp.uniform('hp', 0, 1)}
+                ])
+                },
+                {'l1_reg': hp.choice(
+                    'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
+                {'l2_reg': hp.choice(
+                    'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+            ],
+                'optim_params': [
+                {'learn_rate': hp.uniform('learn_rate', 0, 1)},
+                {'rho': hp.uniform('rho', 0, 1)},
+                {'num_epochs': hp.qloguniform(
+                    'num_epochs', log(10), log(1e4), 1)},
+                {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
+                {'init_method': hp.choice(
+                    'init_method', ['gauss', 'fan-io'])},
+                {'scale_factor': hp.uniform(
+                    'scale_factor', 0, 1)}
+            ]
+            }
         return hyperspace
 
     def compute_val_loss(self, mln_params, optim_params, p=0.8):
@@ -164,12 +166,11 @@ class HyperparamOptimizer():
             sampled_optim_params.update(param)
 
         # collect number of hidden units and activation functions
-        num_hids = [int(num_hid) for num_hid in sampled_mln_params['num_hids']]
-        activs = list(sampled_mln_params['activs'])
+        num_hids = list(sampled_mln_params['arch'][0])
+        activs = list(sampled_mln_params['arch'][1])
         activs.append('softmax')
 
         # set the loss terms
-        # this hyperspace enforces dropout
         loss_terms = ['cross_entropy', 'dropout']
         input_p = sampled_mln_params['input_p']
         hidden_p = sampled_mln_params['hidden_p']
