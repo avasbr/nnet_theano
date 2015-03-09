@@ -65,7 +65,7 @@ class HyperparamOptimizer():
                 'scale_factor', 0, 1)}
         ]
         })
-    return hyperspace
+        return hyperspace
 
     def get_hyperspace(self):
         ''' defines the hyperspace and return it; all modifications should go here. there really
