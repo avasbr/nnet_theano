@@ -43,8 +43,8 @@ class HyperparamOptimizer():
                 hyperspace.append({'mln_params': [
                     {'num_hids': num_hids},
                     {'activs': activs},
-                    {'input_p': hp.uniform('ip', 0, 1)},
-                    {'hidden_p': hp.uniform('hp', 0, 1)},
+                    {'input_p': hp.uniform('ip_%i%i'%(num_layers,i), 0, 1)},
+                    {'hidden_p': hp.uniform('hp_%i%i'%(num_layers,i), 0, 1)},
                     {'l1_reg': hp.choice(
                         'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
                     {'l2_reg': hp.choice(
