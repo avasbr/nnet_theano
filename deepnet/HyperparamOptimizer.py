@@ -46,9 +46,9 @@ class HyperparamOptimizer():
                     {'input_p': hp.uniform('ip_%i%i'%(num_layers,i), 0, 1)},
                     {'hidden_p': hp.uniform('hp_%i%i'%(num_layers,i), 0, 1)},
                     {'l1_reg': hp.choice(
-                        'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
+                        'l1_lambda_%i%i'%(num_layers,i), [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
                     {'l2_reg': hp.choice(
-                        'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+                        'l2_lambda_%i%i'%(num_layers,i), [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
                 ],
                     'optim_params': [
                     {'learn_rate': hp.uniform('learn_rate', 0, 1)},
