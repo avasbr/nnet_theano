@@ -1,4 +1,5 @@
-# Currently very much a work in progress
+# Currently very much a work in progress, but contains some pre-made
+# spaces for convenience
 import numpy as np
 import matplotlib.pyplot as plt
 import theano
@@ -13,39 +14,35 @@ from deepnet.common import nnetutils as nu
 
 class HyperparamOptimizer():
 
-    def __init__(self, X, y):
+    def __init__(self, X, y, space_type='modern'):
 
         self.X = X
         self.y = y
         self.d = X.shape[1]
         self.k = y.shape[1]
+        self.space_type = space_type
 
-    def get_hyperspace_2(self):
-        ''' defines the hyperspace and return it; all modifications should go here. there really
-        isn't a need to make it a function '''
+    def set_multilayer_dropout_space(self):
+        ''' defines a hyperspace for a "modern" neural networks: at least two layers with dropout + reLU '''
 
-        # Multilayer nnet spaces
-          # Multilayer nnet spaces
+        # Force at least 2 layers, cuz we're modern
+        min_layers = 2
         max_layers = 3
 
         # sets up the neural network
-        nnets = [None]*max_layers
+        nnets = [None] * (max_layers - min_layers + 1)
 
-        for num_layers in range(0, max_layers):
-            activs = [None] * (num_layers+1)
-            num_hids = [None] * (num_layers+1)
+        for i, num_layers in enumerate(range(min_layers, max_layers + 1)):
+            num_hids = [None] * (num_layers + 1)
+            for j in range(num_layers):
+                num_hids[j] = hp.qloguniform(
+                    'num_hid_%i%i' % (i, j), log(100), log(3000), 1)
 
-            # set the activation function choice per layer
-            for i in range(num_layers+1):
-                activs[i] = hp.choice('activ_%i%i'%(num_layers,i), ['sigmoid', 'reLU'])
-                num_hids[i] = hp.qloguniform(
-                    'num_hid_%i%i'%(num_layers,i), log(10), log(3000), 1)
-            
-            nnets[num_layers] = (num_hids,activs)
+            nnets[i] = num_hids
 
         # define the hyperparamater space to search
         hyperspace = ({'mln_params': [
-            {'arch': hp.choice('arch',nnets)},
+            {'arch': hp.choice('arch', nnets)},
             {'input_p': hp.uniform('ip', 0, 1)},
             {'hidden_p': hp.uniform('hp', 0, 1)},
             {'l1_reg': hp.choice(
@@ -59,99 +56,17 @@ class HyperparamOptimizer():
             {'num_epochs': hp.qloguniform(
                 'num_epochs', log(1e2), log(2000), 1)},
             {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-            {'init_method': hp.choice(
-                'init_method', ['gauss', 'fan-io'])},
             {'scale_factor': hp.uniform(
                 'scale_factor', 0, 1)}
         ]
         })
         return hyperspace
 
-    def get_hyperspace(self):
-        ''' defines the hyperspace and return it; all modifications should go here. there really
-        isn't a need to make it a function '''
+    def compute_multilayer_dropout_objective(self, hyperspace):
+        ''' parses the multilayer with dropout hyperspace and translates it into a loss value which
+        we will use to search the space of hyperparams '''
 
-        # Multilayer nnet spaces
-        max_layers = 4
-
-        # sets up the neural network
-        for num_layers in range(1, max_layers):
-            activs = [None] * num_layers
-            num_hids = [None] * num_layers
-
-            # set the activation function choice per layer
-            for i in range(num_layers):
-                activs[i] = hp.choice('activ_%i' % i, ['sigmoid', 'reLU'])
-                num_hids[i] = hp.qloguniform(
-                    'num_hid_%i' % i, log(10), log(5000), 1)
-
-            # define the hyperparamater space to search
-            hyperspace = {'mln_params': [
-                {'num_hids': num_hids},
-                {'activs': activs},
-                {'dropout': hp.choice('dropout', [
-                    None,
-                    {'input_p': hp.uniform(
-                        'ip', 0, 1), 'hidden_p': hp.uniform('hp', 0, 1)}
-                ])
-                },
-                {'l1_reg': hp.choice(
-                    'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-                {'l2_reg': hp.choice(
-                    'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
-            ],
-                'optim_params': [
-                {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-                {'rho': hp.uniform('rho', 0, 1)},
-                {'num_epochs': hp.qloguniform(
-                    'num_epochs', log(10), log(1e4), 1)},
-                {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-                {'init_method': hp.choice(
-                    'init_method', ['gauss', 'fan-io'])},
-                {'scale_factor': hp.uniform(
-                    'scale_factor', 0, 1)}
-            ]
-            }
-        return hyperspace
-
-    def compute_val_loss(self, mln_params, optim_params, p=0.8):
-        ''' Uses a single train/val split to compute the loss '''
-
-        X_tr, y_tr, X_val, y_val = nu.split_train_val(self.X, p, y=self.y)
-        nnet = mln.MultilayerNet(**mln_params)
-        nnet.fit(X_tr, y_tr, **optim_params)
-
-        val_loss = float(nnet.compute_test_loss(X_val, y_val))
-        print 'Validation loss:', val_loss
-
-        return val_loss
-
-
-    def compute_cv_loss(self, mln_params, optim_params, k_cv=5):
-        ''' Uses k-fold cross-val to compute the average loss '''
-
-        # get the indices of the splits
-        cv_splits = nu.split_k_fold_cross_val(self.X, k_cv=k_cv, y=self.y)
-
-        val_loss = 0.  # needed to accumulate the validation loss
-
-        for i, split in enumerate(cv_splits):
-            print 'Cross-validation iteration:', i + 1
-            # get the training and validation for this split
-            X_tr, y_tr, X_val, y_val = split
-            # initialize the neural network
-            nnet = mln.MultilayerNet(**mln_params)
-            nnet.fit(X_tr, y_tr, **optim_params)  # fit to the training
-            # add to the validation loss
-            val_loss += float(nnet.compute_test_loss(X_val, y_val))
-
-        avg_loss = 1. * val_loss / k_cv  # compute the average
-        print 'Average loss:', avg_loss
-
-        return avg_loss
-
-    def hyperopt_obj_fn_2(self, hyperspace):
-         # parse the hyperparams from the sampled hyperspace
+        # parse the hyperparams from the sampled hyperspace
         sampled_mln_params = {}
         sampled_optim_params = {}
 
@@ -165,10 +80,9 @@ class HyperparamOptimizer():
                 param['num_epochs'] = int(param['num_epochs'])
             sampled_optim_params.update(param)
 
-        # collect number of hidden units and activation functions
-        num_hids = list(sampled_mln_params['arch'][0])
-        activs = list(sampled_mln_params['arch'][1])
-        activs.append('softmax')
+        # collect number of hidden units and define activation functions
+        num_hids = list(sampled_mln_params['arch'])
+        activs = ['reLU'] * len(num_hids) + ['softmax']
 
         # set the loss terms
         loss_terms = ['cross_entropy', 'dropout']
@@ -199,7 +113,47 @@ class HyperparamOptimizer():
         return self.compute_val_loss(mln_params, rmsprop_params)
         # return self.compute_cv_loss(mln_params, rmsprop_params)
 
-    def hyperopt_obj_fn(self, hyperspace):
+    def set_old_space(self):
+        ''' defines an old net from the 80s - simple sigmoid layers, nothing fancy'''
+
+        min_layers = 1
+        max_layers = 3
+
+        # sets up the neural network
+        nnets = [None] * (max_layers - min_layers + 1)
+
+        for i, num_layers in enumerate(range(min_layers, max_layers + 1)):
+            num_hids = [None] * (num_layers + 1)
+            for j in range(num_layers):
+                num_hids[j] = hp.qloguniform(
+                    'num_hid_%i%i' % (i, j), log(100), log(3000), 1)
+
+            nnets[i] = num_hids
+
+            # define the hyperparamater space to search
+            hyperspace = {'mln_params': [
+                {'num_hids': num_hids},
+                {'activs': activs},
+                {'l1_reg': hp.choice(
+                    'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
+                {'l2_reg': hp.choice(
+                    'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+            ],
+                'optim_params': [
+                {'learn_rate': hp.uniform('learn_rate', 0, 1)},
+                {'rho': hp.uniform('rho', 0, 1)},
+                {'num_epochs': hp.qloguniform(
+                    'num_epochs', log(10), log(1e4), 1)},
+                {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
+                {'init_method': hp.choice(
+                    'init_method', ['gauss', 'fan-io'])},
+                {'scale_factor': hp.uniform(
+                    'scale_factor', 0, 1)}
+            ]
+            }
+        return hyperspace
+
+    def compute_old_objective(self, hyperspace):
         ''' objective function that takes in a hyperspace and returns a cost/value '''
 
         # parse the hyperparams from the sampled hyperspace
@@ -217,22 +171,14 @@ class HyperparamOptimizer():
             sampled_optim_params.update(param)
 
         # collect number of hidden units and activation functions
-        num_hids = [int(num_hid) for num_hid in sampled_mln_params['num_hids']]
-        activs = list(sampled_mln_params['activs'])
-        activs.append('softmax')
+        num_hids = list(sampled_mln_params['arch'])
+        activs = ['sigmoid'] * len(num_hids) + ['softmax']
 
         # set the loss terms
         loss_terms = ['cross_entropy']
-        dropout = sampled_mln_params['dropout']
-        input_p = None
-        hidden_p = None
         l1_decay = sampled_mln_params['l1_reg']
         l2_decay = sampled_mln_params['l2_reg']
 
-        if not dropout is None:
-            loss_terms.append('dropout')
-            input_p = dropout['input_p']
-            hidden_p = dropout['hidden_p']
         if not l1_decay is None:
             loss_terms.append('l1_reg')
         if not l2_decay is None:
@@ -240,9 +186,7 @@ class HyperparamOptimizer():
 
         # multilayer parameters
         mln_params = {'d': self.d, 'k': self.k, 'num_hids': num_hids, 'activs': activs,
-                      'loss_terms': loss_terms, 'l2_decay': l2_decay, 'l1_decay': l1_decay,
-                      'input_p': input_p, 'hidden_p': hidden_p}
-
+                      'loss_terms': loss_terms, 'l2_decay': l2_decay, 'l1_decay': l1_decay}
         # rmsprop parameters
         rmsprop_params = {'optim_method': 'RMSPROP', 'optim_type': 'minibatch'}
         rmsprop_params.update(sampled_optim_params)
@@ -255,11 +199,56 @@ class HyperparamOptimizer():
         return self.compute_val_loss(mln_params, rmsprop_params)
         # return self.compute_cv_loss(mln_params, rmsprop_params)
 
+    def compute_val_loss(self, mln_params, optim_params, p=0.8):
+        ''' Uses a single train/val split to compute the loss '''
+
+        X_tr, y_tr, X_val, y_val = nu.split_train_val(self.X, p, y=self.y)
+        nnet = mln.MultilayerNet(**mln_params)
+        nnet.fit(X_tr, y_tr, **optim_params)
+
+        val_loss = float(nnet.compute_test_loss(X_val, y_val))
+        print 'Validation loss:', val_loss
+
+        return val_loss
+
+    def compute_cv_loss(self, mln_params, optim_params, k_cv=5):
+        ''' Uses k-fold cross-val to compute the average loss '''
+
+        # get the indices of the splits
+        cv_splits = nu.split_k_fold_cross_val(self.X, k_cv=k_cv, y=self.y)
+
+        val_loss = 0.  # needed to accumulate the validation loss
+
+        for i, split in enumerate(cv_splits):
+            print 'Cross-validation iteration:', i + 1
+            # get the training and validation for this split
+            X_tr, y_tr, X_val, y_val = split
+            # initialize the neural network
+            nnet = mln.MultilayerNet(**mln_params)
+            nnet.fit(X_tr, y_tr, **optim_params)  # fit to the training
+            # add to the validation loss
+            val_loss += float(nnet.compute_test_loss(X_val, y_val))
+
+        avg_loss = 1. * val_loss / k_cv  # compute the average
+        print 'Average loss:', avg_loss
+
+        return avg_loss
+
     def run_hyperopt(self):
         ''' convenience function for running hyperopt '''
 
-        hyperspace_2 = self.get_hyperspace_2()
-        best = fmin(self.hyperopt_obj_fn_2, hyperspace_2, algo=tpe.suggest,
-                    max_evals=100)
+        best = None
+
+        if self.space_type == 'modern':
+            hyperspace = self.set_multilayer_dropout_space()
+            best = fmin(self.compute_multilayer_dropout_objective, hyperspace_2, algo=tpe.suggest,
+                        max_evals=100)
+        elif self.space_type == 'old':
+            hyperspace = self.set_old_space()
+            best = fmin(self.compute_old_objective, hyperspace, algo=tpe.suggest,
+                        max_evals=100)
+        else:
+            sys.exit(
+                'Space type not specified correctly, your choices are: "modern" or "old"')
 
         return best

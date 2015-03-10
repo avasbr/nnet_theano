@@ -87,12 +87,12 @@ class Network(object):
 
             if init_method == 'gauss':
                 for i, (n1, n2) in enumerate(zip(self.num_nodes[:-1], self.num_nodes[1:])):
-                    wts[i] = scale_factor * np.random.randn(n1, n2)
+                    wts[i] = scale_factor*1./np.sqrt(n2) * np.random.randn(n1, n2)
                     bs[i] = np.zeros(n2)
 
             elif init_method == 'fan-io':
                 for i, (n1, n2) in enumerate(zip(self.num_nodes[:-1], self.num_nodes[1:])):
-                    v = np.sqrt(scale_factor * 1. / (n1 + n2 + 1))
+                    v = scale_factor*np.sqrt(6./(n1 + n2 + 1))
                     wts[i] = 2.0 * v * np.random.rand(n1, n2) - v
                     bs[i] = np.zeros(n2)
             else:
@@ -497,19 +497,19 @@ class Network(object):
             bs = self.bs_
 
         if 'dropout' in self.loss_terms:
-            # get the input and hidden layer dropout probabilities
             input_p = self.loss_params['input_p']
             hidden_p = self.loss_params['hidden_p']
 
-            # compute the first activation
+            # compute the first activation separately in case we have no hidden layer; 
             act = self.activs[0](
                 T.dot(self.dropout(X, input_p), wts[0]) + bs[0])
             if len(wts) > 1:  # len(wts) = 1 corresponds to softmax regression
                 for i, (w, b, activ) in enumerate(zip(wts[1:], bs[1:], self.activs[1:])):
                     act = activ(T.dot(self.dropout(act, hidden_p), w) + b)
 
-            act = T.switch(act < 0.00001, 0.00001, act)
-            act = T.switch(act > 0.99999, 0.99999, act)
+            eps = 1e-6
+            act = T.switch(act < eps, eps, act)
+            act = T.switch(act > (1.-eps), (1.-eps), act)
 
             return act
         else:
