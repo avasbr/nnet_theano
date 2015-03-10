@@ -56,6 +56,8 @@ class HyperparamOptimizer():
             {'num_epochs': hp.qloguniform(
                 'num_epochs', log(1e2), log(2000), 1)},
             {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
+            {'init_method': hp.choice(
+                'init_method', ['gauss', 'fan-io'])},
             {'scale_factor': hp.uniform(
                 'scale_factor', 0, 1)}
         ]
