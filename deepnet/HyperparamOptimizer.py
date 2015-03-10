@@ -240,7 +240,7 @@ class HyperparamOptimizer():
 
         if self.space_type == 'modern':
             hyperspace = self.set_multilayer_dropout_space()
-            best = fmin(self.compute_multilayer_dropout_objective, hyperspace_2, algo=tpe.suggest,
+            best = fmin(self.compute_multilayer_dropout_objective, hyperspace, algo=tpe.suggest,
                         max_evals=100)
         elif self.space_type == 'old':
             hyperspace = self.set_old_space()
