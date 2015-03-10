@@ -130,27 +130,27 @@ class HyperparamOptimizer():
 
             nnets[i] = num_hids
 
-            # define the hyperparamater space to search
-            hyperspace = {'mln_params': [
-                {'num_hids': num_hids},
-                {'activs': activs},
-                {'l1_reg': hp.choice(
-                    'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-                {'l2_reg': hp.choice(
-                    'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
-            ],
-                'optim_params': [
-                {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-                {'rho': hp.uniform('rho', 0, 1)},
-                {'num_epochs': hp.qloguniform(
-                    'num_epochs', log(10), log(1e4), 1)},
-                {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-                {'init_method': hp.choice(
-                    'init_method', ['gauss', 'fan-io'])},
-                {'scale_factor': hp.uniform(
-                    'scale_factor', 0, 1)}
-            ]
-            }
+        # define the hyperparamater space to search
+        hyperspace = {'mln_params': [
+            {'num_hids': num_hids},
+            {'activs': activs},
+            {'l1_reg': hp.choice(
+                'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
+            {'l2_reg': hp.choice(
+                'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+        ],
+            'optim_params': [
+            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
+            {'rho': hp.uniform('rho', 0, 1)},
+            {'num_epochs': hp.qloguniform(
+                'num_epochs', log(10), log(1e4), 1)},
+            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
+            {'init_method': hp.choice(
+                'init_method', ['gauss', 'fan-io'])},
+            {'scale_factor': hp.uniform(
+                'scale_factor', 0, 1)}
+        ]
+        }
         return hyperspace
 
     def compute_old_objective(self, hyperspace):
