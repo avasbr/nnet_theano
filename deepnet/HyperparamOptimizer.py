@@ -33,10 +33,10 @@ class HyperparamOptimizer():
         nnets = [None] * (max_layers - min_layers + 1)
 
         for i, num_layers in enumerate(range(min_layers, max_layers + 1)):
-            num_hids = [None] * (num_layers + 1)
+            num_hids = [None] * num_layers
             for j in range(num_layers):
                 num_hids[j] = hp.qloguniform(
-                    'num_hid_%i%i' % (i, j), log(100), log(3000), 1)
+                    'num_hid_%i%i' % (i, j), log(100), log(1000), 1)
 
             nnets[i] = num_hids
 
@@ -123,17 +123,16 @@ class HyperparamOptimizer():
         nnets = [None] * (max_layers - min_layers + 1)
 
         for i, num_layers in enumerate(range(min_layers, max_layers + 1)):
-            num_hids = [None] * (num_layers + 1)
+            num_hids = [None] * num_layers
             for j in range(num_layers):
                 num_hids[j] = hp.qloguniform(
-                    'num_hid_%i%i' % (i, j), log(100), log(3000), 1)
+                    'num_hid_%i%i' % (i, j), log(10), log(100), 1)
 
             nnets[i] = num_hids
 
         # define the hyperparamater space to search
         hyperspace = {'mln_params': [
-            {'num_hids': num_hids},
-            {'activs': activs},
+            {'arch': hp.choice('arch', nnets)},
             {'l1_reg': hp.choice(
                 'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
             {'l2_reg': hp.choice(
