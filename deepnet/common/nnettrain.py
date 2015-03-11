@@ -27,10 +27,18 @@ def clean_optim_params(optim_params):
     return optim_params
 
 
+def get_model_params(config_file):
+    ''' returns just the model parameters given a config file. turns out I need this
+    for a hyperparameter optimizer '''
+        cfg_parser = ConfigParser()
+        return clean_model_params(dict(cfg_parser.items('model_params')))
+
+
 def train_single_net(model_type, model_params, optim_params, X_tr, y_tr=None, X_val=None, y_val=None, wts=None, bs=None):
     ''' defines a single neural network given a model type and parameters '''
 
     # get the model and optimization parameters in a format for ingestion
+    # TODO: better to do this in the train_nnet function
     model_params = clean_model_params(dict(model_params))
     optim_params = clean_optim_params(dict(optim_params))
 

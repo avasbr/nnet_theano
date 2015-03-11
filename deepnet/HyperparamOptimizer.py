@@ -10,6 +10,7 @@ from math import log
 from deepnet import MultilayerNet as mln
 from deepnet.common import nnetact as na
 from deepnet.common import nnetutils as nu
+from deepnet.common import nnettrain as nt
 
 
 class HyperparamOptimizer():
@@ -21,6 +22,66 @@ class HyperparamOptimizer():
         self.d = X.shape[1]
         self.k = y.shape[1]
         self.space_type = space_type
+        # since these correspond to set values that are not sampled,
+        # we'll just keep track of them as we loop through the layers.
+        # this is specific only to pretraining
+        self.pretrain_layer_1 = None
+        self.pretrain_layer_2 = None
+
+    def learn_pretrain_settings(self, config_path):
+        ''' automatically searches for the right settings to pre-train
+        the model described in the configuration path '''
+
+        # we will reuse this hyperspace (denoising autoencoder) for every pair of input-output layers
+        pretrain_hyperspace = ({'pretrainer_params': [
+            {'corrput_p': hp.uniform('cp', 0, 1)},
+            {'l1_reg': hp.choice(
+                'l1_lambda', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
+            {'l2_reg': hp.choice(
+                'l2_lambda', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+        ],
+
+            'optim_params': [
+            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
+            {'rho': hp.uniform('rho', 0, 1)},
+            {'num_epochs': hp.qloguniform(
+                'num_epochs', log(1e2), log(2000), 1)},
+            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
+            {'init_method': hp.choice(
+                'init_method', ['gauss', 'fan-io'])},
+            {'scale_factor': hp.uniform(
+                'scale_factor', 0, 1)}
+        ]
+        })
+
+        last_hyperspace = ()
+
+        # get the number of nodes per hidden layer so we know how to
+        # initialize the autoencoders
+        model_params = nt.get_model_params(config_path)
+        pretrain_layers = [self.d] + model_params['num_hids']
+
+        best_pretrain_settings = []
+        
+        for l1, l2 in zip(pretrain_layers[:-1], pretrain_layers[1:]):
+            self.pretrain_layer_1 = l1
+            self.pretrain_layer_2 = l2
+            best = fmin(self.compute_pretrain_layer_objective, pretrain_hyperspace, algo=tpe.suggest,
+                        max_evals=100)
+            best_pretrain_settings.append(best)
+
+        # the last layer is not pretrained with an autoencoder
+        best = fmin(self.compute_last_layer_objective, last_hyperspace, algo=tpe.suggest,
+            max_evals=100)
+        best_pretrain_settings.append(best)
+
+        return best_pretrain_settings
+
+    #TODO: WRITE THESE
+    def compute_last_layer_objective(self, hyperspace):
+        pass
+    def compute_pretrain_layer_objective(self, hyperspace):
+        pass
 
     def set_multilayer_dropout_space(self):
         ''' defines a hyperspace for a "modern" neural networks: at least two layers with dropout + reLU '''
@@ -144,7 +205,7 @@ class HyperparamOptimizer():
             {'learn_rate': hp.uniform('learn_rate', 0, 1)},
             {'rho': hp.uniform('rho', 0, 1)},
             {'num_epochs': hp.qloguniform(
-                'num_epochs', log(10), log(1e4), 1)},
+                'num_epochs', log(10), log(5e3), 1)},
             {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
             {'init_method': hp.choice(
                 'init_method', ['gauss', 'fan-io'])},
