@@ -34,145 +34,186 @@ class HyperparamOptimizer():
 
         # fine-tuning related fields
 
+    def merge_default_searchable(self, default_space, searcable_space):
+        merged_space = default_space.copy()
+        merged_space.update(searchable_space)
+
+        return merged_space
+
     def set_finetune_space(self, config_file):
         ''' Given the original deep net architecture, and a set of pretrained weights
-        and biases, now fine tune it - we'll attempt to learn the right settings to 
-        train this net as well'''
+        and biases, define the configuration space to search for fintuning parameters '''
 
         # we know these fields won't change, so go ahead and set them as
         # defaults now
         model_params = nt.get_model_params(config_file)
         optim_params = nt.get_optim_params(config_file)
-        default_model_params = {k: model_params[k] for k in ('num_hids', 'activs', 'd', 'k')}
-        default_model_params.update({'loss_terms': ['cross_entropy']})
-        default_optim_params = {k: model_params[k] for k in ('optim_method', 'optim_type')}
+        default_finetune_model_params = {k: model_params[k] for k in ('num_hids', 'activs', 'd', 'k')}
+        default_finetune_model_params['loss_terms'] = ['cross_entropy']
+        default_finetune_optim_params = {k: model_params[k] for k in ('optim_method', 'optim_type')}
 
         # define the space of hyperparameters we wish to
-        searchable_model_params = {'l1_reg': hp.choice('l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))]),
-                                   'l2_reg': hp.choice('l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])}
-        searchable_optim_params = {'learn_rate': hp.uniform('learn_rate', 0, 1),
-                                   'rho': hp.uniform('rho', 0, 1),
-                                   'num_epochs': hp.qloguniform('num_epochs', log(10), log(5e3), 1),
-                                   'batch_size': hp.quniform('batch_size', 128, 1024, 1),
-                                   'init_method': hp.choice('init_method', ['gauss', 'fan-io']),
-                                   'scale_factor': hp.uniform('scale_factor', 0, 1)}
+        searchable_finetune_model_params = {'l1_reg': hp.choice('l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))]),
+                                            'l2_reg': hp.choice('l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])}
+        searchable_finetune_optim_params = {'learn_rate': hp.uniform('learn_rate', 0, 1),
+                                            'rho': hp.uniform('rho', 0, 1),
+                                            'num_epochs': hp.qloguniform('num_epochs', log(10), log(5e3), 1),
+                                            'batch_size': hp.quniform('batch_size', 128, 1024, 1),
+                                            'init_method': hp.choice('init_method', ['gauss', 'fan-io']),
+                                            'scale_factor': hp.uniform('scale_factor', 0, 1)}
 
-        # combine the default and searchable parameters, and combine them into a dictionary to define the
+        # combine the default and searchable parameters into a dictionary to define the
         # full space - this is what will be passed into the objective function
-        all_model_params = default_model_params.copy()
-        all_model_params.update(searchable_model_params)
-        all_optim_params = default_optim_params.copy()
-        all_optim_params.update(searchable_optim_params)
+        fintune_model_params = self.merge_default_searchable(
+            default_finetune_model_params, searchable_finetune_model_params)
+        fintune_optim_params = self.merge_default_searchable(
+            default_finetune_optim_params, searchable_finetune_optim_params)
+
         finetune_hyperspace = {
-            'model_params': all_model_params, 'optim_params': all_optim_params}
+            'finetune_model_params': finetune_model_params, 'finetune_optim_params': finetune_optim_params}
 
         return finetune_hyperspace
 
     def compute_finetune_objective(self, hyperspace):
         ''' objective function for finetuning '''
 
-        curr_model_params = {k: hyperspace['model_params'][k] for k in ('num_hids', 'activs', 'd',
+        curr_model_params = {k: hyperspace['finetune_model_params'][k] for k in ('num_hids', 'activs', 'd',
                                                                         'k', 'loss_terms')}
-        curr_optim_params = {k: optim_params['optim_params'][k] for k in ('learn_rate', 'rho', 'num_epochs',
-                                                                          'batch_size', 'scale_factor')}
+        curr_optim_params = {k: hyperspace['finetune_optim_params'][k] for k in ('optim_type', 'optim_method',
+                                                                                 'learn_rate', 'rho', 'num_epochs',
+                                                                                 'batch_size', 'scale_factor')}
 
         # there's a little extra we need to do before this is completely ready
-        if 'l1_decay' in hyperspace['model_params']:
+        if 'l1_decay' in hyperspace['finetune_model_params']:
             curr_model_params['loss_terms'].append('l1_reg')
             curr_model_params[
-                'l1_decay':hyperspace['model_params']['l1_decay']]
+                'l1_decay':hyperspace['finetune_model_params']['l1_decay']]
 
-        if 'l2_decay' in hyperspace['model_params']:
+        if 'l2_decay' in hyperspace['finetune_model_params']:
             curr_model_params['loss_terms'].append('l2_reg')
             curr_model_params[
-                'l2_decay':hyperspace['model_params']['l2_decay']]
+                'l2_decay':hyperspace['finetune_model_params']['l2_decay']]
 
-        if hyperspace['optim_params']['init_method'] == 0:
+        if hyperspace['finetune_optim_params']['init_method'] == 0:
             curr_optim_params['init_method'] = 'gauss'
         else:
             curr_optim_params['init_method'] = 'fan-io'
+
+        curr_optim_params['num_epochs'] = int(curr_optim_params['num_epochs'])
+        curr_optim_params['batch_size'] = int(curr_optim_params['batch_size'])
 
         return self.compute_val_loss(curr_model_params, curr_optim_params,
                                      wts=self.pretrain_wts, bs=self.pretrain_bs)
 
     def learn_pretrain_settings(self, config_file):
-        ''' automatically searches for the right settings to pre-train
-        the model described in the configuration path '''
+        ''' automatically searches for the right settings to pre-train the model described in the configuration path '''
+
+        default_pretrain_model_params = {'corrupt_type': 'mask', 'activs': ['sigmoid', 'sigmoid'],
+                                         'loss_terms': ['cross_entropy', 'corruption']}
+
+        default_last_model_params = {
+            'activs': ['softmax'], 'loss_terms': ['cross_entropy'], 'num_hids': []}
+
+        default_optim_params = {
+            'optim_type': 'minibatch', 'optim_method': 'RMSPROP'}
 
         # we will reuse this hyperspace (denoising autoencoder) for every pair
         # of input-output layers
-        pretrain_hyperspace = {'pretrain_params': [
-            {'corrupt_p': hp.uniform('corrupt_p', 0, 1)},
-            {'l1_reg': hp.choice(
-                'l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-            {'l2_reg': hp.choice(
-                'l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
-        ],
-            'optim_params': [
-            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-            {'rho': hp.uniform('rho', 0, 1)},
-            {'num_epochs': hp.qloguniform(
-                'num_epochs', log(1e2), log(2000), 1)},
-            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-            {'init_method': hp.choice(
-                'init_method', ['gauss', 'fan-io'])},
-            {'scale_factor': hp.uniform(
-                'scale_factor', 0, 1)}
-        ]
-        }
-
+        searchable_pretrain_model_params = {'corrupt_p': hp.uniform('corrupt_p', 0, 1),
+                                            'l1_reg': hp.choice('l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))]),
+                                            'l2_reg': hp.choice('l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
+                                }
         # the final layer is trained normally, via simple softmax regression
-        last_hyperspace = {'last_params': [
-            {'l1_reg': hp.choice(
-                'l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-            {'l2_reg': hp.choice(
-                'l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
-        ],
-            'optim_params': [
-            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-            {'rho': hp.uniform('rho', 0, 1)},
-            {'num_epochs': hp.qloguniform(
-                'num_epochs', log(1e2), log(2000), 1)},
-            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-            {'init_method': hp.choice(
-                'init_method', ['gauss', 'fan-io'])},
-            {'scale_factor': hp.uniform(
-                'scale_factor', 0, 1)}
-        ]
-        }
+        searchable_last_model_params = {'l1_reg': hp.choice('l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))]),
+                                        'l2_reg': hp.choice('l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
 
-        # get the number of nodes per hidden layer so we know how to
-        # initialize the autoencoders
+        searchable_optim_params = {'learn_rate': hp.uniform('learn_rate', 0, 1),
+                                        'rho': hp.uniform('rho', 0, 1),
+                                        'num_epochs': hp.qloguniform('num_epochs', log(1e2), log(2000), 1),
+                                        'batch_size': hp.quniform('batch_size', 128, 1024, 1),
+                                        'init_method': hp.choice('init_method', ['gauss', 'fan-io']),
+                                        'scale_factor': hp.uniform('scale_factor', 0, 1)}
+
+        # merge default and searchable dictionaries
+        optim_params = self.merge_default_searchable(
+            default_optim_params, searchable_optim_params)
+        
+        # get the number of nodes per hidden layer from the original architecture so we know how to
+        # initialize the autoencoders and the final softmax layer
         model_params = nt.get_model_params(config_file)
-        pretrain_nodes = [self.d] + model_params['num_hids']
+        pretrain_nodes = [model_params['d']] + model_params['num_hids']
 
         best_pretrain_settings = []
         self.curr_X = self.X
+
         print 'Starting pre-training...'
         for l1, l2 in zip(pretrain_nodes[:-1], pretrain_nodes[1:]):
-            self.pretrain_layer_1 = l1
-            self.pretrain_layer_2 = l2
-            print 'Layer 1: %i' % self.pretrain_layer_1
-            print 'Layer 2: %i' % self.pretrain_layer_2
+            
+            # get the next pretraining space ready
+            default_pretrain_model_params['num_hids'] = [l1,l2]
+            curr_pretrain_model_params = self.merge_default_searchable(default_pretrain_model_params, 
+                searchable_pretrain_model_params)
+            pretrain_hyperspace = {'pretrain_model_params': curr_pretrain_model_params, 
+            'pretrain_optim_params': optim_params}
+
+            # search over the hyperparameters
             best = fmin(self.compute_pretrain_objective, pretrain_hyperspace, algo=tpe.suggest,
                         max_evals=1)
             best_pretrain_settings.append(best)
+            
             # this updates curr_X for the next pre-training layer
-            self.pretrain_layer_with_settings(best)
+            self.pretrain_layer_with_settings(best, default_pretrain_model_params, default_optim_params)
 
         # the last layer is not pretrained with an autoencoder
+        default_last_model_params['num_hids'] = [l2,model_params['k']]
+        last_model_params = self.merge_default_searchable(default_last_model_params,
+            searchable_last_model_params)
+        last_hyperspace = {'last_model_params':last_model_params, 'last_optim_params':optim_params}
         best = fmin(self.compute_last_objective, last_hyperspace, algo=tpe.suggest,
                     max_evals=1)
         best_pretrain_settings.append(best)
 
         return best_pretrain_settings
 
-    def pretrain_layer_with_settings(self, best):
+  def compute_pretrain_objective(self, hyperspace):
+        ''' objective function for pre-training layers '''
+
+        # parse the hyperparams from the curr hyperspace
+        curr_pretrain_model_params = hyperspace['pretrain_model_params']
+        curr_pretrain_optim_params = {k: optim_params['optim_params'][k] for k in ('optim_method', 'optim_type', 'learn_rate', 'rho',
+                                                                          'num_epochs', 'batch_size', 'scale_factor')}
+
+        curr_pretrain_optim_params['num_epochs'] = int(curr_optim_params['num_epochs'])
+        curr_pretrain_optim_params['batch_size'] = int(curr_optim_params['batch_size'])
+
+        # there's a little extra we need to do before this is completely ready
+        if 'l1_decay' in hyperspace['pretrain_model_params']:
+            curr_pretrain_model_params['loss_terms'].append('l1_reg')
+            curr_pretrain_model_params[
+                'l1_decay':hyperspace['pretrain_model_params']['l1_decay']]
+
+        if 'l2_decay' in hyperspace['pretrain_model_params']:
+            curr_pretrain_model_params['loss_terms'].append('l2_reg')
+            curr_pretrain_model_params[
+                'l2_decay':hyperspace['pretrain_model_params']['l2_decay']]
+
+
+        if hyperspace['pretrain_optim_params']['init_method'] == 0:
+            curr_pretrain_optim_params['init_method'] = 'gauss'
+        else:
+            curr_pretrain_optim_params['init_method'] = 'fan-io'
+
+        print 'Pretraining parameters'
+        print curr_pretrain_model_params
+        print 'Optimization parameters'
+        print curr_pretrain_optim_params
+
+        return self.compute_val_reconstruction_loss(curr_pretrain_model_params, curr_pretrain_optim_params)
+    
+    def pretrain_layer_with_settings(self, best, default_pretrain_model_params, default_pretrain_optim_params):
         ''' given a learned best-setting, train that layer, and then generate the next set of
         inputs for the next pre-training layer '''
 
-        pretrain_params = {}
-        optim_params = {}
 
         # TODO: there has to be a cleaner way to go from the output 'best' of hyperopt to
         # setting these parameters
@@ -218,54 +259,6 @@ class HyperparamOptimizer():
         # and set the input to the next layer
         self.curr_X = dae.encode(self.curr_X)
 
-    def compute_pretrain_objective(self, hyperspace):
-        ''' objective function for pre-training layers '''
-
-        # parse the hyperparams from the curr hyperspace
-        curr_pretrain_params = {}
-        curr_optim_params = {}
-
-        # collect dictionaries into single dictionary
-        for param in hyperspace['pretrain_params']:
-            curr_pretrain_params.update(param)
-        for param in hyperspace['optim_params']:
-            if 'batch_size' in param:
-                param['batch_size'] = int(param['batch_size'])
-            if 'num_epochs' in param:
-                param['num_epochs'] = int(param['num_epochs'])
-            curr_optim_params.update(param)
-
-        # collect number of hidden units and define activation functions
-        num_hids = [self.pretrain_layer_2]
-        activs = ['sigmoid', 'sigmoid']
-
-        # set the loss terms
-        loss_terms = ['cross_entropy', 'corruption']
-        corrupt_p = curr_pretrain_params['corrupt_p']
-        l1_decay = curr_pretrain_params['l1_reg']
-        l2_decay = curr_pretrain_params['l2_reg']
-
-        if l1_decay is not None:
-            loss_terms.append('l1_reg')
-        if l2_decay is not None:
-            loss_terms.append('l2_reg')
-
-        # multilayer parameters
-        pretrain_params = {'d': self.pretrain_layer_1, 'num_hids': num_hids, 'activs': activs,
-                           'loss_terms': loss_terms, 'corrupt_p': corrupt_p, 'corrupt_type': 'mask',
-                           'l2_decay': l2_decay, 'l1_decay': l1_decay}
-
-        # rmsprop parameters
-        rmsprop_params = {'optim_method': 'RMSPROP', 'optim_type': 'minibatch'}
-        rmsprop_params.update(curr_optim_params)
-
-        print 'Pretraining parameters'
-        print pretrain_params
-        print 'Optimization parameters'
-        print rmsprop_params
-
-        return self.compute_val_reconstruction_loss(pretrain_params, rmsprop_params)
-        # return self.compute_cv_loss(mln_params, rmsprop_params)
 
     def compute_last_objective(self, hyperspace):
 
