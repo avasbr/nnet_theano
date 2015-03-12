@@ -1,3 +1,4 @@
+# TODO: should turn all this into a class, call it "ConfigTrainer" or something
 from deepnet import NeuralNetworkCore
 from deepnet import MultilayerNet as mln
 from deepnet import Autoencoder as ae
@@ -30,8 +31,15 @@ def clean_optim_params(optim_params):
 def get_model_params(config_file):
     ''' returns just the model parameters given a config file. turns out I need this
     for a hyperparameter optimizer '''
-        cfg_parser = ConfigParser()
-        return clean_model_params(dict(cfg_parser.items('model_params')))
+    cfg_parser = ConfigParser()
+    cfg_parser.read(config_file)
+    return clean_model_params(dict(cfg_parser.items('model_params')))
+
+def get_optim_params(config_file):
+    ''' returns just the optimization parameters given a config file '''
+    cfg_parser = ConfigParser():
+    cfg_parser.read(config_file)
+    return clean_model_params(dict(cfg_parser.items('optim_params')))
 
 
 def train_single_net(model_type, model_params, optim_params, X_tr, y_tr=None, X_val=None, y_val=None, wts=None, bs=None):
