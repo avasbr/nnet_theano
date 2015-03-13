@@ -304,69 +304,6 @@ class Network(object):
         # for test
         X_tr, y_tr = self.shared_dataset(X_tr, y_tr)
 
-        # debugging functions:
-        # compute_batch_sparse_loss = theano.function(
-        #     inputs=[idx],
-        #     outputs=[
-        #         nl.sparsity(self.hidden_act, beta=self.loss_params['beta'], rho=self.loss_params['rho'])],
-        #     allow_input_downcast=True,
-        #     mode='FAST_RUN',
-        #     givens={
-        #         X: X_tr[idx]
-        #     })
-        # y_pred = self.fprop(X)
-        # compute_pred = theano.function(
-        #     inputs=[],
-        #     outputs=y_pred,
-        #     allow_input_downcast=True,
-        #     mode='FAST_RUN',
-        #     givens={
-        #         X: X_tr
-        #     })
-        # compute_batch_eval_loss = theano.function(
-        #     inputs=[idx],
-        #     outputs=eval_loss,
-        #     allow_input_downcast=True,
-        #     mode='FAST_RUN',
-        #     givens={
-        #         X: X_tr[idx],
-        #         y: y_tr[idx]
-        #     })
-        # compute_batch_hidden_act = theano.function(
-        #     inputs=[idx],
-        #     outputs=self.hidden_act,
-        #     allow_input_downcast=True,
-        #     mode='FAST_RUN',
-        #     givens={
-        #         X: X_tr[idx]
-        #     })
-        # compute_batch_output_act = theano.function(
-        #    inputs=[idx],
-        #    outputs=self.output_act,
-        #    allow_input_downcast=True,
-        #    mode='FAST_RUN',
-        #    givens={
-        #         X: X_tr[idx]
-        #    })
-        # compute_batch_optim_loss = theano.function(
-        #     inputs=[idx],
-        #     outputs=optim_loss,
-        #     allow_input_downcast=True,
-        #     mode='FAST_RUN',
-        #     givens={
-        #         X: X_tr[idx],
-        #         y: y_tr[idx]
-        #     })
-        # compute_batch_grad = theano.function(
-        #     inputs=[idx],
-        #     outputs=grad_params,
-        #     allow_input_downcast=True,
-        #     mode='FAST_RUN',
-        #     givens={
-        #         X: X_tr[idx],
-        #         y: y_tr[idx]
-        #     })
-
         # training function for minibatchs
         train = theano.function(
             inputs=[idx],
@@ -422,23 +359,8 @@ class Network(object):
                 n_batch_iter = (epoch - 1) * n_batches + idx
                 batch_idx = tr_idx[start_idx:stop_idx]  # get the next batch
 
-                # debugging
-                # pre_nan_eval_loss = compute_batch_eval_loss(batch_idx)
-                # pre_nan_sparse_loss = compute_batch_sparse_loss(batch_idx)
-                # pre_nan_optim_loss = compute_batch_optim_loss(batch_idx)
-                # pre_nan_hidden_act = compute_batch_hidden_act(batch_idx)
-                # pre_nan_output_act = compute_batch_output_act(batch_idx)
-                # pre_nan_wts,pre_nan_bs = self.get_weights_and_biases()
-
                 train(batch_idx)
-
-                # debugging
-                # if self.check_nans():
-                #     import pdb; pdb.set_trace()
-                #     print 'NaN discovered!!', 'Epoch:', epoch, 'Iter:', idx
-                #     print 'Evaluation loss prior to NaN:',pre_nan_eval_loss
-                #     print 'Sparse loss prior to NaN',pre_nan_sparse_loss
-
+                
             epoch += 1  # update the epoch count
             if epoch % 10 == 0:
                 tr_loss.append(compute_train_loss())
