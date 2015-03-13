@@ -119,7 +119,7 @@ def main(argv):
     I = load_images(data_path)
     X = sample_images(I, n=n)
 
-    print 'Average cross-validation Loss:',compute_cv_loss(X, config_file)
+    print 'Average cross-validation Loss:', compute_cv_loss(X, config_file)
 
     # train a neural network
     print 'Training...'

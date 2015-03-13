@@ -100,7 +100,7 @@ class Autoencoder(NeuralNetworkCore.Network):
         type: string
         '''
         if method == 'mask':
-            return X * self.srng.binomial(X.shape, n = 1, p = (1-v), dtype=theano.config.floatX)
+            return X * self.srng.binomial(X.shape, n=1, p=(1 - v), dtype=theano.config.floatX)
         elif method == 'gauss':
             # additive gaussian noise
             return X + self.srng.normal(X.shape, avg=0.0, std=v, dtype=theano.config.floatX)
@@ -145,7 +145,7 @@ class Autoencoder(NeuralNetworkCore.Network):
                   for p in param]  # all model parameters in a list
         # gradient of each model param w.r.t training loss
         grad_params = [T.grad(optim_loss, param) for param in params]
-        
+
         # gradient of the full weight vector
         grad_w = nu.t_unroll_ae(
             grad_params[:len(wts)], grad_params[len(wts):], self.tied_wts)

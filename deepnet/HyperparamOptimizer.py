@@ -1,6 +1,6 @@
 # Currently very much a work in progress, and contains a lot of hard-coded/repeated code. this was
 # done in a hurry though, but ideally, we would have a config file which ingests in "default" vs
-# "searchable" parameters, and it will use some kind of val/cross-val loss to 
+# "searchable" parameters, and it will use some kind of val/cross-val loss to
 import numpy as np
 import matplotlib.pyplot as plt
 import theano
@@ -403,7 +403,8 @@ class HyperparamOptimizer():
             default_mln_optim_params, search_mln_optim_params)
 
         # define the hyperparamater space to search
-        hyperspace = {'mln_model_params': mln_model_params, 'mln_optim_params': mln_optim_params}
+        hyperspace = {'mln_model_params': mln_model_params,
+                      'mln_optim_params': mln_optim_params}
 
         return hyperspace
 
@@ -532,7 +533,7 @@ class HyperparamOptimizer():
             curr_optim_params['init_method'] = 'gauss'
         else:
             curr_optim_params['init_method'] = 'fan-io'
-        
+
         # collect number of hidden units and define activation functions
         num_hids = list(hyperspace['mln_model_params']['arch'])
         activs = ['sigmoid'] * len(num_hids) + ['softmax']

@@ -31,7 +31,7 @@ class Network(object):
 
         # number of nodes
         self.num_nodes = [d] + num_hids + [k]
-        
+
         # total number of parameters in this neural network
         self.num_params = 0
         for i, (n1, n2) in enumerate(zip(self.num_nodes[:-1], self.num_nodes[1:])):
@@ -360,7 +360,7 @@ class Network(object):
                 batch_idx = tr_idx[start_idx:stop_idx]  # get the next batch
 
                 train(batch_idx)
-                
+
             epoch += 1  # update the epoch count
             if epoch % 10 == 0:
                 tr_loss.append(compute_train_loss())
