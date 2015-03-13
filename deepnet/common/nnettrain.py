@@ -37,7 +37,7 @@ def get_model_params(config_file):
 
 def get_optim_params(config_file):
     ''' returns just the optimization parameters given a config file '''
-    cfg_parser = ConfigParser():
+    cfg_parser = ConfigParser()
     cfg_parser.read(config_file)
     return clean_model_params(dict(cfg_parser.items('optim_params')))
 

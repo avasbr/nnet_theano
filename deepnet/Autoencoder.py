@@ -100,7 +100,7 @@ class Autoencoder(NeuralNetworkCore.Network):
         type: string
         '''
         if method == 'mask':
-            return X * self.srng.binomial(X.shape, n=1, p=1 - v, dtype=theano.config.floatX)
+            return X * self.srng.binomial(X.shape, n = 1, p = (1-v), dtype=theano.config.floatX)
         elif method == 'gauss':
             # additive gaussian noise
             return X + self.srng.normal(X.shape, avg=0.0, std=v, dtype=theano.config.floatX)

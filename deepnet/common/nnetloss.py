@@ -51,6 +51,12 @@ def l2_reg(wts, l2_decay):
 
     return reg_loss
 
+def binary_cross_entropy(y, y_pred):
+    ''' cross-entropy mainly for denoising autoencoders '''
+
+    # just call theano's version of it, seems reasonable
+    return T.mean(T.mean(T.nnet.binary_crossentropy(y_pred,y),axis=1))
+
 
 def cross_entropy(y, y_pred):
     ''' Basic cross entropy loss function

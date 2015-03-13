@@ -25,8 +25,8 @@ class Network(object):
     def __init__(self, d=None, k=None, num_hids=None, activs=None, loss_terms=[None], **loss_params):
 
         # Number of units in the output layer determined by k, so not explicitly specified in
-        # num_hids. still need to check that there's one less hidden unit sizes specified than
-        # number of activation functions
+        # num_hids. still need to check that there's one less hidden layer than number of activation
+        # functions
         assert(len(num_hids) + 1 == len(activs))
 
         # number of nodes
@@ -87,12 +87,13 @@ class Network(object):
 
             if init_method == 'gauss':
                 for i, (n1, n2) in enumerate(zip(self.num_nodes[:-1], self.num_nodes[1:])):
-                    wts[i] = scale_factor*1./np.sqrt(n2) * np.random.randn(n1, n2)
+                    wts[i] = scale_factor * 1. / \
+                        np.sqrt(n2) * np.random.randn(n1, n2)
                     bs[i] = np.zeros(n2)
 
             elif init_method == 'fan-io':
                 for i, (n1, n2) in enumerate(zip(self.num_nodes[:-1], self.num_nodes[1:])):
-                    v = scale_factor*np.sqrt(6./(n1 + n2 + 1))
+                    v = scale_factor * np.sqrt(6. / (n1 + n2 + 1))
                     wts[i] = 2.0 * v * np.random.rand(n1, n2) - v
                     bs[i] = np.zeros(n2)
             else:
@@ -407,7 +408,6 @@ class Network(object):
         val_loss = []
         epoch = 0
 
-        # debugging
         while epoch < num_epochs:
             # randomly shuffle the data indices
             tr_idx = np.random.permutation(m)
@@ -422,14 +422,14 @@ class Network(object):
                 n_batch_iter = (epoch - 1) * n_batches + idx
                 batch_idx = tr_idx[start_idx:stop_idx]  # get the next batch
 
-                # # debugging
+                # debugging
                 # pre_nan_eval_loss = compute_batch_eval_loss(batch_idx)
                 # pre_nan_sparse_loss = compute_batch_sparse_loss(batch_idx)
                 # pre_nan_optim_loss = compute_batch_optim_loss(batch_idx)
                 # pre_nan_hidden_act = compute_batch_hidden_act(batch_idx)
                 # pre_nan_output_act = compute_batch_output_act(batch_idx)
                 # pre_nan_wts,pre_nan_bs = self.get_weights_and_biases()
-                
+
                 train(batch_idx)
 
                 # debugging
@@ -439,15 +439,14 @@ class Network(object):
                 #     print 'Evaluation loss prior to NaN:',pre_nan_eval_loss
                 #     print 'Sparse loss prior to NaN',pre_nan_sparse_loss
 
-
             epoch += 1  # update the epoch count
             if epoch % 10 == 0:
                 tr_loss.append(compute_train_loss())
                 if compute_val_loss is not None:
                     val_loss.append(compute_val_loss())
-                    print 'Epoch: %s, Training error: %.8f, Validation error: %.8f' % (epoch, tr_loss[-1], val_loss[-1])
+                    print 'Epoch: %s, Training error: %.15f, Validation error: %.15f' % (epoch, tr_loss[-1], val_loss[-1])
                 else:
-                    print 'Epoch: %s, Training error: %.8f' % (epoch, tr_loss[-1])
+                    print 'Epoch: %s, Training error: %.15f' % (epoch, tr_loss[-1])
 
             # training and validation curves - very useful to see how training
             # error evolves
@@ -500,7 +499,8 @@ class Network(object):
             input_p = self.loss_params['input_p']
             hidden_p = self.loss_params['hidden_p']
 
-            # compute the first activation separately in case we have no hidden layer; 
+            # compute the first activation separately in case we have no hidden
+            # layer;
             act = self.activs[0](
                 T.dot(self.dropout(X, input_p), wts[0]) + bs[0])
             if len(wts) > 1:  # len(wts) = 1 corresponds to softmax regression
@@ -509,7 +509,7 @@ class Network(object):
 
             eps = 1e-6
             act = T.switch(act < eps, eps, act)
-            act = T.switch(act > (1.-eps), (1.-eps), act)
+            act = T.switch(act > (1. - eps), (1. - eps), act)
 
             return act
         else:
@@ -547,7 +547,7 @@ class Network(object):
         # for numericaly stability
         eps = 1e-6
         act = T.switch(act < eps, eps, act)
-        act = T.switch(act > (1.-eps), (1.-eps), act)
+        act = T.switch(act > (1. - eps), (1. - eps), act)
 
         return act
 
@@ -649,6 +649,9 @@ class Network(object):
         if 'cross_entropy' in self.loss_terms:
             eval_loss = nl.cross_entropy(y, y_pred)
 
+        elif 'binary_cross_entropy' in self.loss_terms:
+            eval_loss = nl.binary_cross_entropy(y, y_pred)
+
         elif 'squared_error' in self.loss_terms:
             eval_loss = nl.squared_error(y, y_pred)
         else:
@@ -689,6 +692,9 @@ class Network(object):
         if 'cross_entropy' in self.loss_terms:
             optim_loss = nl.cross_entropy(y, y_optim)
 
+        elif 'binary_cross_entropy' in self.loss_terms:
+            optim_loss = nl.binary_cross_entropy(y, y_optim)
+
         elif 'squared_error' in self.loss_terms:
             optim_loss = nl.squared_error(y, y_optim)
 
@@ -716,8 +722,9 @@ class Network(object):
     # debugging
     def check_nans(self):
         ''' simple function which returns True if any value is NaN in wts or biases '''
-        
-        wts, bs = self.get_weights_and_biases() # poke into the shared variables and get their values
+
+        # poke into the shared variables and get their values
+        wts, bs = self.get_weights_and_biases()
         nans = 0
         for wt, b in zip(wts, bs):
             nans += np.sum(wt) + np.sum(b)
