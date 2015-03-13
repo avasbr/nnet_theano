@@ -31,7 +31,7 @@ class Network(object):
 
         # number of nodes
         self.num_nodes = [d] + num_hids + [k]
-
+        
         # total number of parameters in this neural network
         self.num_params = 0
         for i, (n1, n2) in enumerate(zip(self.num_nodes[:-1], self.num_nodes[1:])):
