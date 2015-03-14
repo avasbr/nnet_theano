@@ -1,6 +1,6 @@
-# Currently very much a work in progress, but contains some pre-made
-# spaces and objective functions - a lot of clean-up necessary, many
-# things are
+# Currently very much a work in progress, and contains a lot of hard-coded/repeated code. this was
+# done in a hurry though, but ideally, we would have a config file which ingests in "default" vs
+# "searchable" parameters, and it will use some kind of val/cross-val loss to
 import numpy as np
 import matplotlib.pyplot as plt
 import theano
@@ -124,7 +124,7 @@ class HyperparamOptimizer():
 
         default_pretrain_optim_params = {
             'optim_type': 'minibatch', 'optim_method': 'RMSPROP'}
-        
+
         default_last_model_params = {
             'activs': ['softmax'], 'loss_terms': ['cross_entropy'], 'num_hids': []}
 
@@ -166,7 +166,8 @@ class HyperparamOptimizer():
             curr_pretrain_optim_params = self.merge_default_search(
                 default_pretrain_optim_params, search_pretrain_optim_params)
 
-            # combine the merged default model and optim parameters into a single dictionary
+            # combine the merged default model and optim parameters into a
+            # single dictionary
             pretrain_hyperspace = {'pretrain_model_params': curr_pretrain_model_params,
                                    'pretrain_optim_params': curr_pretrain_optim_params}
 
@@ -180,13 +181,13 @@ class HyperparamOptimizer():
             best_pretrain_settings.append(best)
 
             # this updates curr_X for the next pre-training layer, and also stores the pre-trained
-            # weights 
+            # weights
             self.pretrain_layer_with_settings(
                 best,
                 search_pretrain_model_params,
                 search_pretrain_optim_params,
                 default_pretrain_model_params,
-                default_pretrain_optim_params,layer_type='pretrain')
+                default_pretrain_optim_params, layer_type='pretrain')
 
         print 'Pretraining the final layer..'
         # the last layer is not pretrained with an autoencoder...
@@ -205,10 +206,10 @@ class HyperparamOptimizer():
 
         last_model_params = self.merge_default_search(
             default_last_model_params, search_last_model_params)
-        
+
         last_optim_params = self.merge_default_search(
             default_last_optim_params, search_last_optim_params)
-        
+
         last_hyperspace = {
             'last_model_params': last_model_params, 'last_optim_params': last_optim_params}
         best = fmin(self.compute_last_objective, last_hyperspace, algo=tpe.suggest,
@@ -216,11 +217,11 @@ class HyperparamOptimizer():
         best_pretrain_settings.append(best)
 
         self.pretrain_layer_with_settings(
-                best,
-                search_last_model_params,
-                search_last_optim_params,
-                default_last_model_params,
-                default_last_optim_params,layer_type='last')
+            best,
+            search_last_model_params,
+            search_last_optim_params,
+            default_last_model_params,
+            default_last_optim_params, layer_type='last')
 
         print 'Complete!'
         return best_pretrain_settings
@@ -304,8 +305,7 @@ class HyperparamOptimizer():
 
         return self.compute_val_loss(curr_last_model_params, curr_last_optim_params, X=self.curr_X, y=self.y)
 
-    def pretrain_layer_with_settings(self, best, search_model_params, search_optim_params,
-                                     default_model_params, default_optim_params, layer_type):
+    def pretrain_layer_with_settings(self, best, search_model_params, search_optim_params, default_model_params, default_optim_params, layer_type):
         ''' given a learned best-setting and the default model and optimization parameters, pretrain the weights
         for that layer '''
 
@@ -348,10 +348,10 @@ class HyperparamOptimizer():
 
             # and set the input to the next layer
             self.curr_X = nnet.encode(self.curr_X)
-        
+
         elif layer_type == 'last':
             nnet = mln.MultilayerNet(**model_params)
-            nnet.fit(self.curr_X,self.y,**optim_params)
+            nnet.fit(self.curr_X, self.y, **optim_params)
             self.pretrain_wts.append(nnet.wts_[0].get_value())
             self.pretrain_bs.append(nnet.bs_[0].get_value())
         else:
@@ -375,80 +375,85 @@ class HyperparamOptimizer():
 
             nnets[i] = num_hids
 
+        default_mln_model_params = {
+            'd': self.d, 'k': self.k, 'loss_terms': ['cross_entropy', 'dropout']}
+
+        search_mln_model_params = {
+            'arch': hp.choice('arch', nnets),
+            'input_p': hp.uniform('ip', 0, 1),
+            'hidden_p': hp.uniform('hp', 0, 1),
+            'l1_reg': hp.choice('l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))]),
+            'l2_reg': hp.choice('l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])}
+
+        default_mln_optim_params = {
+            'optim_type': 'minibatch', 'optim_method': 'RMSPROP'}
+
+        search_mln_optim_params = {
+            'learn_rate': hp.uniform('learn_rate', 0, 1),
+            'rho': hp.uniform('rho', 0, 1),
+            'num_epochs': hp.qloguniform('num_epochs', log(1e2), log(2000), 1),
+            'batch_size': hp.quniform('batch_size', 128, 1024, 1),
+            'init_method': hp.choice('init_method', ['gauss', 'fan-io']),
+            'scale_factor': hp.uniform('scale_factor', 0, 1)}
+
+        # merge the default and search spaces
+        mln_model_params = self.merge_default_search(
+            default_mln_model_params, search_mln_model_params)
+        mln_optim_params = self.merge_default_search(
+            default_mln_optim_params, search_mln_optim_params)
+
         # define the hyperparamater space to search
-        hyperspace = {'mln_params': [
-            {'arch': hp.choice('arch', nnets)},
-            {'input_p': hp.uniform('ip', 0, 1)},
-            {'hidden_p': hp.uniform('hp', 0, 1)},
-            {'l1_reg': hp.choice(
-                'l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-            {'l2_reg': hp.choice(
-                'l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
-        ],
-            'optim_params': [
-            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-            {'rho': hp.uniform('rho', 0, 1)},
-            {'num_epochs': hp.qloguniform(
-                'num_epochs', log(1e2), log(2000), 1)},
-            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-            {'init_method': hp.choice(
-                'init_method', ['gauss', 'fan-io'])},
-            {'scale_factor': hp.uniform(
-                'scale_factor', 0, 1)}
-        ]
-        }
+        hyperspace = {'mln_model_params': mln_model_params,
+                      'mln_optim_params': mln_optim_params}
+
         return hyperspace
 
     def compute_multilayer_dropout_objective(self, hyperspace):
         ''' parses the multilayer with dropout hyperspace and translates it into a loss value which
         we will use to search the space of hyperparams '''
 
-        # parse the hyperparams from the curr hyperspace
-        curr_mln_params = {}
-        curr_optim_params = {}
+        curr_model_params = {k: hyperspace['mln_model_params'][k] for k in ('d', 'k', 'loss_terms', 'input_p', 'hidden_p')}
+        curr_optim_params = {k: hyperspace['mln_optim_params'][k] for k in ('optim_type', 'optim_method',
+                                                                            'learn_rate', 'rho', 'num_epochs',
+                                                                            'batch_size', 'scale_factor')}
+        # clean up
+        curr_model_params = self.dict_tuple_to_list(
+            curr_model_params)
+        curr_optim_params['num_epochs'] = int(
+            curr_optim_params['num_epochs'])
+        curr_optim_params['batch_size'] = int(
+            curr_optim_params['batch_size'])
 
-        # collect dictionaries into single dictionary
-        for param in hyperspace['mln_params']:
-            curr_mln_params.update(param)
-        for param in hyperspace['optim_params']:
-            if 'batch_size' in param:
-                param['batch_size'] = int(param['batch_size'])
-            if 'num_epochs' in param:
-                param['num_epochs'] = int(param['num_epochs'])
-            curr_optim_params.update(param)
+        # there's a little extra we need to do before this is completely ready
+        if 'l1_decay' in hyperspace['mln_model_params']:
+            curr_model_params['loss_terms'].append('l1_reg')
+            curr_model_params[
+                'l1_decay':hyperspace['mln_model_params']['l1_decay']]
+
+        if 'l2_decay' in hyperspace['mln_model_params']:
+            curr_model_params['loss_terms'].append('l2_reg')
+            curr_model_params[
+                'l2_decay':hyperspace['mln_model_params']['l2_decay']]
+
+        if hyperspace['mln_optim_params']['init_method'] == 0:
+            curr_optim_params['init_method'] = 'gauss'
+        else:
+            curr_optim_params['init_method'] = 'fan-io'
 
         # collect number of hidden units and define activation functions
-        num_hids = list(curr_mln_params['arch'])
+        num_hids = list(hyperspace['mln_model_params']['arch'])
         activs = ['reLU'] * len(num_hids) + ['softmax']
 
-        # set the loss terms
-        loss_terms = ['cross_entropy', 'dropout']
-        input_p = curr_mln_params['input_p']
-        hidden_p = curr_mln_params['hidden_p']
-        l1_decay = curr_mln_params['l1_reg']
-        l2_decay = curr_mln_params['l2_reg']
-
-        if l1_decay is not None:
-            loss_terms.append('l1_reg')
-        if l2_decay is not None:
-            loss_terms.append('l2_reg')
-
-        # multilayer parameters
-        mln_params = {'d': self.d, 'k': self.k, 'num_hids': num_hids, 'activs': activs,
-                      'loss_terms': loss_terms, 'l2_decay': l2_decay, 'l1_decay': l1_decay,
-                      'input_p': input_p, 'hidden_p': hidden_p}
-
-        # rmsprop parameters
-        rmsprop_params = {'optim_method': 'RMSPROP', 'optim_type': 'minibatch'}
-        rmsprop_params.update(curr_optim_params)
+        curr_model_params['num_hids'] = num_hids
+        curr_model_params['activs'] = activs
 
         print 'Multilayer net parameters'
-        print mln_params
+        print curr_model_params
         print 'Optimization parameters'
-        print rmsprop_params
+        print curr_optim_params
 
-        return self.compute_val_loss(mln_params, rmsprop_params)
-        # return self.compute_cv_loss(mln_params, rmsprop_params)
+        return self.compute_val_loss(curr_model_params, curr_optim_params)
+        # return self.compute_cv_loss(mln_model_params, rmsprop_params)
 
     def set_old_space(self):
         ''' defines an old net from the 80s - simple sigmoid layers, nothing fancy'''
@@ -467,89 +472,97 @@ class HyperparamOptimizer():
 
             nnets[i] = num_hids
 
+        default_mln_model_params = {
+            'd': self.d, 'k': self.k, 'loss_terms': ['cross_entropy']}
+
+        search_mln_model_params = {
+            'arch': hp.choice('arch', nnets),
+            'l1_reg': hp.choice('l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))]),
+            'l2_reg': hp.choice('l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])}
+
+        default_mln_optim_params = {
+            'optim_type': 'minibatch', 'optim_method': 'RMSPROP'}
+
+        search_mln_optim_params = {
+            'learn_rate': hp.uniform('learn_rate', 0, 1),
+            'rho': hp.uniform('rho', 0, 1),
+            'num_epochs': hp.qloguniform('num_epochs', log(1e2), log(2000), 1),
+            'batch_size': hp.quniform('batch_size', 128, 1024, 1),
+            'init_method': hp.choice('init_method', ['gauss', 'fan-io']),
+            'scale_factor': hp.uniform('scale_factor', 0, 1)}
+
+        # merge the default and search spaces
+        mln_model_params = self.merge_default_search(
+            default_mln_model_params, search_mln_model_params)
+        mln_optim_params = self.merge_default_search(
+            default_mln_optim_params, search_mln_optim_params)
+
         # define the hyperparamater space to search
-        hyperspace = {'mln_params': [
-            {'arch': hp.choice('arch', nnets)},
-            {'l1_reg': hp.choice(
-                'l1_reg', [None, hp.loguniform('l1_decay', log(1e-5), log(10))])},
-            {'l2_reg': hp.choice(
-                'l2_reg', [None, hp.loguniform('l2_decay', log(1e-5), log(10))])},
-        ],
-            'optim_params': [
-            {'learn_rate': hp.uniform('learn_rate', 0, 1)},
-            {'rho': hp.uniform('rho', 0, 1)},
-            {'num_epochs': hp.qloguniform(
-                'num_epochs', log(10), log(5e3), 1)},
-            {'batch_size': hp.quniform('batch_size', 128, 1024, 1)},
-            {'init_method': hp.choice(
-                'init_method', ['gauss', 'fan-io'])},
-            {'scale_factor': hp.uniform(
-                'scale_factor', 0, 1)}
-        ]
-        }
+        hyperspace = {'mln_model_params': mln_model_params,
+                      'mln_optim_params': mln_optim_params}
+
         return hyperspace
 
     def compute_old_objective(self, hyperspace):
         ''' objective function that takes in a hyperspace and returns a cost/value '''
 
-        # parse the hyperparams from the curr hyperspace
-        curr_mln_params = {}
-        curr_optim_params = {}
+        curr_model_params = {k: hyperspace['mln_model_params'][k] for k in ('d', 'k', 'loss_terms')}
+        curr_optim_params = {k: hyperspace['mln_optim_params'][k] for k in ('optim_type', 'optim_method',
+                                                                            'learn_rate', 'rho', 'num_epochs',
+                                                                            'batch_size', 'scale_factor')}
+        # clean up
+        curr_model_params = self.dict_tuple_to_list(
+            curr_model_params)
+        curr_optim_params['num_epochs'] = int(
+            curr_optim_params['num_epochs'])
+        curr_optim_params['batch_size'] = int(
+            curr_optim_params['batch_size'])
 
-        # collect dictionaries into single dictionary
-        for param in hyperspace['mln_params']:
-            curr_mln_params.update(param)
-        for param in hyperspace['optim_params']:
-            if 'batch_size' in param:
-                param['batch_size'] = int(param['batch_size'])
-            if 'num_epochs' in param:
-                param['num_epochs'] = int(param['num_epochs'])
-            curr_optim_params.update(param)
+        # there's a little extra we need to do before this is completely ready
+        if 'l1_decay' in hyperspace['mln_model_params']:
+            curr_model_params['loss_terms'].append('l1_reg')
+            curr_model_params[
+                'l1_decay':hyperspace['mln_model_params']['l1_decay']]
 
-        # collect number of hidden units and activation functions
-        num_hids = list(curr_mln_params['arch'])
+        if 'l2_decay' in hyperspace['mln_model_params']:
+            curr_model_params['loss_terms'].append('l2_reg')
+            curr_model_params[
+                'l2_decay':hyperspace['mln_model_params']['l2_decay']]
+
+        if hyperspace['mln_optim_params']['init_method'] == 0:
+            curr_optim_params['init_method'] = 'gauss'
+        else:
+            curr_optim_params['init_method'] = 'fan-io'
+
+        # collect number of hidden units and define activation functions
+        num_hids = list(hyperspace['mln_model_params']['arch'])
         activs = ['sigmoid'] * len(num_hids) + ['softmax']
 
-        # set the loss terms
-        loss_terms = ['cross_entropy']
-        l1_decay = curr_mln_params['l1_reg']
-        l2_decay = curr_mln_params['l2_reg']
-
-        if not l1_decay is None:
-            loss_terms.append('l1_reg')
-        if not l2_decay is None:
-            loss_terms.append('l2_reg')
-
-        # multilayer parameters
-        mln_params = {'d': self.d, 'k': self.k, 'num_hids': num_hids, 'activs': activs,
-                      'loss_terms': loss_terms, 'l2_decay': l2_decay, 'l1_decay': l1_decay}
-        # rmsprop parameters
-        rmsprop_params = {'optim_method': 'RMSPROP', 'optim_type': 'minibatch'}
-        rmsprop_params.update(curr_optim_params)
+        curr_model_params['num_hids'] = num_hids
+        curr_model_params['activs'] = activs
 
         print 'Multilayer net parameters'
-        print mln_params
+        print curr_model_params
         print 'Optimization parameters'
-        print rmsprop_params
+        print curr_optim_params
 
-        return self.compute_val_loss(mln_params, rmsprop_params)
-        # return self.compute_cv_loss(mln_params, rmsprop_params)
+        return self.compute_val_loss(curr_model_params, curr_optim_params)
 
     #-------------------Functions for computing validation---------------
 
-    def compute_val_reconstruction_loss(self, pretrain_params, optim_params, p=0.8):
+    def compute_val_reconstruction_loss(self, pretrain_params, mln_optim_params, p=0.8):
         ''' Reconstruction loss '''
 
         X_tr, X_val = nu.split_train_val(self.curr_X, p)
         nnet = ae.Autoencoder(**pretrain_params)
-        nnet.fit(X_tr, **optim_params)
+        nnet.fit(X_tr, **mln_optim_params)
 
         re_val_loss = float(nnet.compute_reconstruction_loss(X_val))
         print 'Reconstruction loss on Validation set:', re_val_loss
 
         return re_val_loss
 
-    def compute_val_loss(self, mln_params, optim_params, X=None, y=None, p=0.8, wts=None, bs=None):
+    def compute_val_loss(self, mln_model_params, mln_optim_params, X=None, y=None, p=0.8, wts=None, bs=None):
         ''' Uses a single train/val split to compute the loss '''
 
         if X is None:
@@ -558,17 +571,17 @@ class HyperparamOptimizer():
             y = self.y
 
         X_tr, y_tr, X_val, y_val = nu.split_train_val(X, p, y=y)
-        nnet = mln.MultilayerNet(**mln_params)
+        nnet = mln.MultilayerNet(**mln_model_params)
 
         # adding optional weights/biases here allows for fine-tuning, if needed
-        nnet.fit(X_tr, y_tr, wts=wts, bs=bs, **optim_params)
+        nnet.fit(X_tr, y_tr, wts=wts, bs=bs, **mln_optim_params)
         val_loss = float(nnet.compute_test_loss(X_val, y_val))
 
         print 'Validation loss:', val_loss
 
         return val_loss
 
-    def compute_cv_loss(self, mln_params, optim_params, k_cv=5):
+    def compute_cv_loss(self, mln_model_params, mln_optim_params, k_cv=5):
         ''' Uses k-fold cross-val to compute the average loss '''
 
         # get the indices of the splits
@@ -581,8 +594,8 @@ class HyperparamOptimizer():
             # get the training and validation for this split
             X_tr, y_tr, X_val, y_val = split
             # initialize the neural network
-            nnet = mln.MultilayerNet(**mln_params)
-            nnet.fit(X_tr, y_tr, **optim_params)  # fit to the training
+            nnet = mln.MultilayerNet(**mln_model_params)
+            nnet.fit(X_tr, y_tr, **mln_optim_params)  # fit to the training
             # add to the validation loss
             val_loss += float(nnet.compute_test_loss(X_val, y_val))
 
