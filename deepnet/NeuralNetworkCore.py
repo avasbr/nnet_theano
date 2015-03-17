@@ -462,6 +462,8 @@ class Network(object):
 
         # use the first data matrix to compute the first activation
         act = self.activs[0](T.dot(X, wts[0]) + bs[0])
+        
+        # len(wts) = 1 corresponds to softmax regression
         if len(wts) > 1:
             for i, (w, b, activ) in enumerate(zip(wts[1:], bs[1:], self.activs[1:])):
                 act = activ(T.dot(act, w) + b)
