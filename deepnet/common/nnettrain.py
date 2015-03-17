@@ -87,7 +87,6 @@ def train_nnet(config_file, X_tr, y_tr=None, X_val=None, y_val=None, wts=None, b
         nnet = None
 
         for idx in range(1, num_trainers + 1):
-
             # parse out the next pre-trainer...
             curr_model_type = cfg_parser.get('model_type_' + str(idx), 'arch')
             curr_model_params = cfg_parser.items('model_params_' + str(idx))

@@ -213,7 +213,7 @@ class HyperparamOptimizer():
         last_hyperspace = {
             'last_model_params': last_model_params, 'last_optim_params': last_optim_params}
         best = fmin(self.compute_last_objective, last_hyperspace, algo=tpe.suggest,
-                    max_evals=1)
+                    max_evals=100)
         best_pretrain_settings.append(best)
 
         self.pretrain_layer_with_settings(
@@ -626,7 +626,7 @@ class HyperparamOptimizer():
                 pretrain_best = self.learn_pretrain_settings(config_file)
                 hyperspace = self.set_finetune_space(config_file)
                 finetune_best = fmin(self.compute_finetune_objective, hyperspace, algo=tpe.suggest,
-                                     max_evals=1)
+                                     max_evals=100)
 
                 return pretrain_best, finetune_best
 
