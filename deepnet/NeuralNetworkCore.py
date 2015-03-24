@@ -29,15 +29,13 @@ class Network(object):
         # functions
         assert(len(num_hids) + 1 == len(activs))
 
-        # number of nodes
         self.num_nodes = [d] + num_hids + [k]
 
-        # total number of parameters in this neural network
+        # needed mainly for gradient checking...
         self.num_params = 0
         for i, (n1, n2) in enumerate(zip(self.num_nodes[:-1], self.num_nodes[1:])):
             self.num_params += (n1 + 1) * n2
 
-        # define activation functions
         self.activs = [None] * len(activs)
         for idx, activ in enumerate(activs):
             if activ == 'sigmoid':
@@ -51,11 +49,8 @@ class Network(object):
             else:
                 sys.exit(ne.activ_err())
 
-        # loss function and parameters
         self.loss_terms = loss_terms
         self.loss_params = loss_params
-
-        # initialize the random number stream
         self.srng = RandomStreams()
         self.srng.seed(np.random.randint(99999))
 
@@ -73,14 +68,16 @@ class Network(object):
         param: init_method - calls some pre-specified weight initialization routines
         type: string
 
-        param: scale_factor - for gauss, corresponds to the standard deviation
+        param: scale_factor - additional hyperparameter for weight initialization
         type: float, optional
+
+        param: seed - seeds the random number generator
+        type: int, optional
         '''
         if seed is not None:
             np.random.seed(seed=seed)
             self.srng.seed(seed)
 
-        # weights and biases
         if wts is None and bs is None:
             wts = (len(self.num_nodes) - 1) * [None]
             bs = (len(self.num_nodes) - 1) * [None]
@@ -100,6 +97,8 @@ class Network(object):
                 sys.exit(ne.weight_error())
 
         else:
+            # this scenario occurs most when doing unsupervised pre-training to initialize
+            # the weights
             assert isinstance(wts, list)
             assert isinstance(bs, list)
 
@@ -108,7 +107,6 @@ class Network(object):
 
     def fit(self, X_tr, y_tr, X_val=None, y_val=None, wts=None, bs=None, plotting=False, **optim_params):
         ''' The primary function which ingests data and fits to the neural network.
-        Currently only supports mini-batch training.
 
         Parameters:
         -----------
@@ -124,11 +122,14 @@ class Network(object):
         param: y_val - validation labels
         type: theano matrix
 
+        param: plotting - specifies whether any curves should be generated
+        type: boolean
+
         param: **optim_params
         type: dictionary of optimization parameters
 
         '''
-        # initialize all the weights
+        # initialize weights...
         if all(node for node in self.num_nodes):
             init_method = optim_params.pop('init_method')
             scale_factor = optim_params.pop('scale_factor')
@@ -139,12 +140,12 @@ class Network(object):
             self.set_weights(
                 wts=wts, bs=bs, init_method=init_method, scale_factor=scale_factor, seed=seed)
 
+        #...and train
         try:
             optim_type = optim_params.pop('optim_type')
         except KeyError:
             sys.exit(ne.opt_type_err())
 
-        # perform minibatch or full-batch optimization
         num_epochs = optim_params.pop('num_epochs', None)
         batch_size = optim_params.pop('batch_size', None)
 
@@ -155,7 +156,6 @@ class Network(object):
             self.fullbatch_optimize(
                 X_tr, y_tr, X_val=X_val, y_val=y_val, num_epochs=num_epochs, **optim_params)
         else:
-            # error
             sys.exit(ne.opt_type_err())
 
         return self
@@ -179,24 +179,21 @@ class Network(object):
 
         param: num_epochs - the number of full runs through the dataset
         type: int
+
+        param: **optim_params
+        type: dictionary of optimization parameters
         '''
 
         X = T.matrix('X')  # input variable
         y = T.matrix('y')  # output variable
         w = T.vector('w')  # weight vector
 
-        # reshape w into wts/biases
+        # reshape the vector w into weight and bias matrices, and set up the 
+        # theano graph to compute the loss and gradient
         wts, bs = nu.t_reroll(w, self.num_nodes)
-
-        # get the loss
         optim_loss = self.compute_optim_loss(X, y, wts=wts, bs=bs)
-
-        # compute grad
-        params = [p for param in [wts, bs]
-                  for p in param]  # all model parameters in a list
-        # gradient of each model param w.r.t training loss
+        params = [p for param in [wts, bs] for p in param]  
         grad_params = [T.grad(optim_loss, param) for param in params]
-        # gradient of the full weight vector
         grad_w = nu.t_unroll(grad_params[:len(wts)], grad_params[len(wts):])
 
         compute_loss_grad_from_vector = theano.function(
@@ -209,12 +206,12 @@ class Network(object):
             outputs=[optim_loss],
             allow_input_downcast=True)
 
-        # initial value for the weight vector
+        # initialize the weight vector and perform full-batch optimization
         wts0 = [wt.get_value() for wt in self.wts_]
         bs0 = [b.get_value() for b in self.bs_]
         w0 = nu.unroll(wts0, bs0)
 
-        # print 'Checking gradients for fun...'
+        # print 'Checking gradients...'
         # self.check_gradients(X_tr,y_tr,wts0,bs0)
         # print 'Pre-training loss:',compute_loss_from_vector(w0,X_tr,y_tr)
 
@@ -227,13 +224,11 @@ class Network(object):
         if optim_method == 'L-BFGS-B' and theano.config.floatX == 'float32':
             sys.exit('Sorry, L-BFGS-B only works with float64')
 
-        # scipy optimizer
         wf = sp.optimize.minimize(compute_loss_grad_from_vector, w0, args=(X_tr, y_tr), method=optim_method, jac=True,
                                   options={'maxiter': num_epochs})
 
-        # print 'Post-training loss',compute_loss_from_vector(wf.x,X_tr,y_tr)
 
-        # re-roll this back into weights and biases
+        # re-rolln back into weights and biases
         wts, bs = nu.reroll(wf.x, self.num_nodes)
 
         self.wts_ = [theano.shared(nu.floatX(wt)) for wt in wts]
@@ -259,19 +254,19 @@ class Network(object):
         param: num_epochs - the number of full runs through the dataset
         type: int
 
+        param: **optim_params
+        type: dictionary of optimization parameters
+
         '''
         X = T.matrix('X')  # input variable
         y = T.matrix('y')  # output variable
         idx = T.ivector('idx')  # integer index
 
-        optim_loss = self.compute_optim_loss(X, y)  # optimization loss
-        eval_loss = self.compute_eval_loss(X, y)  # evaluation loss
-        params = [p for param in [self.wts_, self.bs_]
-                  for p in param]  # all model parameters in a list
-        # gradient of each model param w.r.t training loss
+        optim_loss = self.compute_optim_loss(X, y)
+        eval_loss = self.compute_eval_loss(X, y)
+        params = [p for param in [self.wts_, self.bs_] for p in param]
         grad_params = [T.grad(optim_loss, param) for param in params]
 
-        # get the method and learning type
         try:
             optim_method = optim_params.pop('optim_method')
         except KeyError:
